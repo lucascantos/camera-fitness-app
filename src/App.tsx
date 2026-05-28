@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { loadSettings } from "@/data/settings/settings";
+import { getSettings, loadSettings } from "@/data/settings/settings";
 import { loadAthlete } from "@/data/athlete/athlete";
 import { useSessionStore } from "@/stores/sessionStore";
 
@@ -32,7 +32,7 @@ export default function App() {
 
   return (
     <div className="h-full flex flex-col bg-bg">
-      {!fullscreen && <TopNav />}
+      {!fullscreen && <TopNav initials={getSettings().initials} />}
       <main className="flex-1 overflow-auto">
         {scene === "home"      && <Home      />}
         {scene === "plans"     && <Plans     />}

@@ -16,6 +16,10 @@ export interface Settings {
   weightStep: number;
   favoriteExercises: string[];
   trainerEnabled: boolean;
+  // ── Profile (used by Body tab and the top-nav avatar) ──
+  name: string;
+  initials: string;
+  heightCm: number;
 }
 
 const DEFAULTS: Settings = {
@@ -29,6 +33,9 @@ const DEFAULTS: Settings = {
   weightStep: 1.0,
   favoriteExercises: [],
   trainerEnabled: true,
+  name: "",
+  initials: "ME",
+  heightCm: 0,
 };
 
 let _settings: Settings = { ...DEFAULTS };
