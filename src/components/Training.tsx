@@ -185,12 +185,12 @@ export function Training() {
           onPlus ={() => updateSettings({ restSeconds: Math.min(600, getSettings().restSeconds + 15) })}
         />
 
-        {/* Done button */}
+        {/* Done button — dark ink fill with white text, matching legacy */}
         <button
           onClick={advance}
-          className="mt-auto bg-white text-on_accent font-bold py-4 rounded-2xl text-lg hover:bg-gray transition"
+          className="mt-auto bg-nav text-white font-bold py-4 rounded-2xl text-lg hover:bg-ink transition flex items-center justify-center gap-3"
         >
-          ✓ Set complete!
+          <span className="text-xl">✓</span> Set complete!
         </button>
       </div>
 

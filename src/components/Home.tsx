@@ -16,6 +16,7 @@ import {
   type WorkoutDay,
 } from "@/data/plans/plans";
 import { useSessionStore } from "@/stores/sessionStore";
+import { PlayIcon } from "@/components/icons";
 
 // ---------------------------------------------------------------------------
 // Constants — exercise → primary muscles, used by the least-trained scoring.
@@ -247,10 +248,7 @@ export function Home() {
               onClick={startToday}
               className="mt-auto bg-white text-ink font-bold py-4 rounded-2xl text-lg flex items-center justify-center gap-3 hover:bg-panel-dark transition"
             >
-              <span className="inline-block w-0 h-0
-                border-y-8 border-y-transparent
-                border-l-[12px] border-l-ink"
-              />
+              <PlayIcon size={14} color="#1A1330" />
               Start workout
             </button>
           ) : (

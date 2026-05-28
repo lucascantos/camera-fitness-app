@@ -25,6 +25,7 @@ import {
   MUSCLE_COLORS,
 } from "@/data/exercises/catalog";
 import { useSessionStore } from "@/stores/sessionStore";
+import { PlayIcon } from "@/components/icons";
 
 const PROGRESSIONS: { id: ProgressionId; label: string }[] = [
   { id: "linear",         label: "Linear" },
@@ -456,9 +457,7 @@ function Editor(p: EditorProps) {
           disabled={!day || day.exercises.length === 0}
           className="flex-[2] py-4 rounded-2xl font-bold bg-accent text-white hover:bg-accent-hov transition flex items-center justify-center gap-3 disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          <span className="inline-block w-0 h-0
-            border-y-7 border-y-transparent
-            border-l-[11px] border-l-white" />
+          <PlayIcon size={13} color="#FFFFFF" />
           Start Day {day?.name ?? ""}
         </button>
         <button

@@ -18,6 +18,7 @@ import { bestSetFor, formatBest, type BestSet } from "@/data/athlete/bestSet";
 import { favoriteCount, isFavorite, toggleFavorite } from "@/data/settings/favorites";
 import { makeSession } from "@/data/plans/plans";
 import { useSessionStore } from "@/stores/sessionStore";
+import { PlayIcon } from "@/components/icons";
 
 type SortMode = "az" | "best" | "favorite";
 
@@ -274,9 +275,7 @@ function Row({
         title={`Start ${titleCase(meta.name)}`}
         aria-label={`Start ${meta.name}`}
       >
-        <span className="inline-block w-0 h-0
-          border-y-7 border-y-transparent
-          border-l-[12px] border-l-white" />
+        <PlayIcon size={14} color="#FFFFFF" />
       </button>
     </div>
   );
