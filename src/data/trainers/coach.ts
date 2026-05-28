@@ -7,7 +7,8 @@ import type { Trainer } from "./trainer";
 
 export const coach: Trainer = {
   name: "Coach",
-  spritePath: "",       // no sprite yet; component renders a placeholder
+  // Rendered by components/trainer/CoachAvatar — no raster sprite needed.
+  spritePath: "svg:coach",
   voiceDir: "/voice/coach",
 
   greetings: [

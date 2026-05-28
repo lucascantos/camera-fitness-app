@@ -17,6 +17,7 @@ import {
 import { getStrategy } from "@/data/progressions";
 import { useSessionStore } from "@/stores/sessionStore";
 import { PlayIcon } from "@/components/icons";
+import { TrainerGreeting } from "@/components/trainer/TrainerGreeting";
 
 // ---------------------------------------------------------------------------
 // Constants — exercise → primary muscles, used by the least-trained scoring.
@@ -261,6 +262,9 @@ export function Home() {
 
       {/* ── Right sidebar ─────────────────────────────────────────────── */}
       <aside className="flex flex-col gap-5">
+        {/* Trainer greeting card */}
+        <TrainerGreeting />
+
         {/* Quick Start */}
         <div className="bg-panel rounded-3xl p-5 border border-border shadow-card">
           <div className="text-[11px] font-bold tracking-widest text-gray-dark mb-3 px-1">

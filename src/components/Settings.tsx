@@ -6,7 +6,9 @@ import { getSettings, updateSettings, type Theme } from "@/data/settings/setting
 import { applyMusicVolume } from "@/audio/music";
 import { repBeep, setCompleteChime } from "@/audio/sfx";
 import { playVoice } from "@/audio/voice";
-import { say } from "@/data/trainers/say";
+import { say, setTrainer } from "@/data/trainers/say";
+import { TRAINERS } from "@/data/trainers";
+import { TrainerAvatar } from "@/components/trainer/TrainerAvatar";
 
 const THEMES: Theme[] = ["fitpop", "light", "dark"];
 const WEIGHT_STEPS = [0.5, 1.0, 2.5, 5.0];
@@ -70,6 +72,34 @@ export function Settings() {
         <Pill selected={s.trainerEnabled}  onClick={() => set({ trainerEnabled: true })}>On</Pill>
         <Pill selected={!s.trainerEnabled} onClick={() => set({ trainerEnabled: false })}>Off</Pill>
       </Group>
+
+      {s.trainerEnabled && (
+        <div className="mt-6">
+          <div className="font-bold mb-2">Pick your trainer</div>
+          <div className="grid grid-cols-2 gap-3">
+            {TRAINERS.map((t) => (
+              <button
+                key={t.name}
+                onClick={() => { setTrainer(t); say("greeting"); force({}); }}
+                className="flex items-center gap-3 bg-panel border border-border rounded-2xl p-3 hover:bg-panel-dark transition text-left"
+              >
+                <TrainerAvatar trainer={t} size={56} />
+                <div>
+                  <div className="font-bold text-ink">{t.name}</div>
+                  <div className="text-xs text-gray-dark">
+                    {t.greetings[0] ?? ""}
+                  </div>
+                </div>
+              </button>
+            ))}
+            {TRAINERS.length === 1 && (
+              <div className="bg-panel-dark border border-dashed border-border rounded-2xl p-3 text-gray-dark text-sm grid place-items-center">
+                More trainers coming soon
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <Group label="Rest duration">
         {REST_STEPS.map((r) => (
