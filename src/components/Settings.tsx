@@ -3,6 +3,10 @@
 
 import { useState } from "react";
 import { getSettings, updateSettings, type Theme } from "@/data/settings/settings";
+import { applyMusicVolume } from "@/audio/music";
+import { repBeep, setCompleteChime } from "@/audio/sfx";
+import { playVoice } from "@/audio/voice";
+import { say } from "@/data/trainers/say";
 
 const THEMES: Theme[] = ["fitpop", "light", "dark"];
 const WEIGHT_STEPS = [0.5, 1.0, 2.5, 5.0];
@@ -20,9 +24,31 @@ export function Settings() {
     <div className="p-8 max-w-2xl">
       <h1 className="text-3xl font-extrabold mb-6">Settings</h1>
 
-      <Slider label="Music"  value={s.musicVol} onChange={(v) => set({ musicVol: v })} />
-      <Slider label="Voice"  value={s.voiceVol} onChange={(v) => set({ voiceVol: v })} />
-      <Slider label="SFX"    value={s.sfxVol}   onChange={(v) => set({ sfxVol: v })} />
+      <Slider
+        label="Music"
+        value={s.musicVol}
+        onChange={async (v) => { await set({ musicVol: v }); applyMusicVolume(); }}
+      />
+      <Slider
+        label="Voice"
+        value={s.voiceVol}
+        onChange={async (v) => {
+          await set({ voiceVol: v });
+          // Preview: speak a short line at the new volume.
+          say("rep");
+          void playVoice;            // keep import live for tree-shaking diags
+        }}
+      />
+      <Slider
+        label="SFX"
+        value={s.sfxVol}
+        onChange={async (v) => {
+          await set({ sfxVol: v });
+          // Preview: rep beep + completion chime at the new volume.
+          repBeep();
+          setTimeout(() => setCompleteChime(), 150);
+        }}
+      />
 
       <Group label="Theme">
         {THEMES.map((t) => (

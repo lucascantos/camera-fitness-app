@@ -5,17 +5,18 @@ import { useSessionStore } from "@/stores/sessionStore";
 import { awardSession, getAthlete, saveAthlete } from "@/data/athlete/athlete";
 import { loadPlans, type Plan } from "@/data/plans/plans";
 import { getStrategy } from "@/data/progressions";
-import { coach } from "@/data/trainers/coach";
-import { line } from "@/data/trainers/trainer";
-import { TrainerHUD } from "./TrainerHUD";
+import { say } from "@/data/trainers/say";
+import { fanfare } from "@/audio/sfx";
 
 export function Complete() {
   const { session, endSession } = useSessionStore();
   const [totalCoins, setTotalCoins] = useState(0);
-  const [hudText] = useState(() => line(coach, "complete").text);
 
   useEffect(() => {
     if (!session) return;
+    // Trainer line + ascending fanfare on enter.
+    say("complete");
+    fanfare();
 
     let repCoins = 0;
     let setCoins = 0;
@@ -97,7 +98,6 @@ export function Complete() {
           ← Home
         </button>
       </div>
-      <TrainerHUD text={hudText} />
     </div>
   );
 }

@@ -1,24 +1,30 @@
 // Ported from: scenes/rest.py (legacy FitnessApp repo)
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSessionStore } from "@/stores/sessionStore";
 import { getSettings } from "@/data/settings/settings";
-import { coach } from "@/data/trainers/coach";
-import { line } from "@/data/trainers/trainer";
-import { TrainerHUD } from "./TrainerHUD";
+import { say } from "@/data/trainers/say";
+import { restTick } from "@/audio/sfx";
 
 export function Rest() {
   const duration = getSettings().restSeconds;
   const [remaining, setRemaining] = useState(duration);
-  const [hudText] = useState(() => line(coach, "rest").text);
   const { goTo } = useSessionStore();
+  const tickedRef = useRef<Set<number>>(new Set());
 
   useEffect(() => {
+    say("rest");
     setRemaining(duration);
+    tickedRef.current = new Set();
     const start = Date.now();
     const id = setInterval(() => {
       const left = duration - Math.floor((Date.now() - start) / 1000);
       setRemaining(left);
+      // Tick on the last 3 seconds — once per integer second.
+      if (left > 0 && left <= 3 && !tickedRef.current.has(left)) {
+        tickedRef.current.add(left);
+        restTick();
+      }
       if (left <= 0) { clearInterval(id); goTo("training"); }
     }, 100);
     return () => clearInterval(id);
@@ -42,7 +48,6 @@ export function Rest() {
           Skip Rest  →
         </button>
       </div>
-      <TrainerHUD text={hudText} />
     </div>
   );
 }

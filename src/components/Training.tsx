@@ -10,9 +10,9 @@ import type { ExerciseTracker } from "@/tracking/exercises/types";
 import { drawPose } from "@/tracking/drawPose";
 import { useSessionStore } from "@/stores/sessionStore";
 import { getSettings, updateSettings } from "@/data/settings/settings";
-import { coach } from "@/data/trainers/coach";
-import { line } from "@/data/trainers/trainer";
-import { TrainerHUD } from "./TrainerHUD";
+import { say } from "@/data/trainers/say";
+import type { LineCategory } from "@/data/trainers/trainer";
+import { repBeep, setCompleteChime } from "@/audio/sfx";
 
 export function Training() {
   const { session, workoutIdx, setIdx, setCursor, goTo } = useSessionStore();
@@ -30,28 +30,34 @@ export function Training() {
   const canvasRef  = useRef<HTMLCanvasElement | null>(null);
   const [reps, setReps] = useState(0);
   const [angle, setAngle] = useState<number | null>(null);
-  const [hudText, setHudText] = useState("");
   const lastRepRef = useRef(0);
 
   useEffect(() => {
     trackerRef.current = getTracker(exercise);
     setReps(0);
     lastRepRef.current = 0;
-    const intro = line(coach, "intro", exercise);
-    setHudText(intro.text);
+    say("intro", exercise);
   }, [exercise]);
 
-  // Voice-line trigger on rep changes.
+  // Voice-line + SFX trigger on rep changes.
   const onRep = useCallback((r: number, target: number, amrap: boolean) => {
     if (r <= 0) return;
-    let cat: Parameters<typeof line>[1] | null = null;
-    if (!amrap && r === target)                       cat = "set_complete";
+
+    // SFX: short beep on every counted rep, ascending chime when the
+    // set finishes (non-AMRAP only).
+    repBeep();
+
+    let cat: LineCategory | null = null;
+    if (!amrap && r === target) {
+      cat = "set_complete";
+      setCompleteChime();
+    }
     else if (!amrap && target >= 2 && r === target-1) cat = "milestone_last1";
     else if (!amrap && target >= 5 && r === target-3) cat = "milestone_last3";
     else if (!amrap && target >= 4 && r === Math.ceil(target/2)) cat = "milestone_half";
     else if (amrap && r % 5 === 0)                    cat = "rep";
     else if (!amrap && r % 3 === 0)                   cat = "rep";
-    if (cat) setHudText(line(coach, cat).text);
+    if (cat) say(cat);
   }, []);
 
   // MediaPipe — fires once per frame with landmarks.
@@ -224,7 +230,6 @@ export function Training() {
         </button>
       </div>
 
-      <TrainerHUD text={hudText} />
     </div>
   );
 }
