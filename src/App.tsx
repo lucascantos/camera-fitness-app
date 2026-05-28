@@ -5,6 +5,8 @@ import { useSessionStore } from "@/stores/sessionStore";
 
 import { TopNav }    from "@/components/TopNav";
 import { Home }      from "@/components/Home";
+import { Plans }     from "@/components/Plans";
+import { Exercises } from "@/components/Exercises";
 import { Training }  from "@/components/Training";
 import { Rest }      from "@/components/Rest";
 import { Complete }  from "@/components/Complete";
@@ -21,7 +23,7 @@ export default function App() {
 
   if (!ready) {
     return (
-      <div className="h-full grid place-items-center text-gray">Loading…</div>
+      <div className="h-full grid place-items-center text-gray-dark">Loading…</div>
     );
   }
 
@@ -29,15 +31,17 @@ export default function App() {
   const fullscreen = scene === "training" || scene === "rest" || scene === "complete";
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col bg-bg">
       {!fullscreen && <TopNav />}
       <main className="flex-1 overflow-auto">
-        {scene === "home"     && <Home     />}
-        {scene === "training" && <Training />}
-        {scene === "rest"     && <Rest     />}
-        {scene === "complete" && <Complete />}
-        {scene === "stats"    && <Stats    />}
-        {scene === "settings" && <Settings />}
+        {scene === "home"      && <Home      />}
+        {scene === "plans"     && <Plans     />}
+        {scene === "exercises" && <Exercises />}
+        {scene === "training"  && <Training  />}
+        {scene === "rest"      && <Rest      />}
+        {scene === "complete"  && <Complete  />}
+        {scene === "stats"     && <Stats     />}
+        {scene === "settings"  && <Settings  />}
       </main>
     </div>
   );

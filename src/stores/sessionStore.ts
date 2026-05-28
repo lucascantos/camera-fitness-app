@@ -1,7 +1,15 @@
 import { create } from "zustand";
 import type { Session } from "@/data/plans/plans";
 
-export type SceneName = "home" | "training" | "rest" | "complete" | "stats" | "settings";
+export type SceneName =
+  | "home"
+  | "plans"
+  | "exercises"
+  | "stats"
+  | "settings"
+  | "training"
+  | "rest"
+  | "complete";
 
 interface SessionState {
   scene: SceneName;

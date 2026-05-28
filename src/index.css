@@ -5,9 +5,10 @@
 html, body, #root {
   height: 100%;
   margin: 0;
-  background: #1A1330;
-  color: #ffffff;
+  background: #F0F0F5;
+  color: #1A1330;
   font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
   user-select: none;
 }
 
