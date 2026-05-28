@@ -1,8 +1,14 @@
 import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import path from "node:path";
 
-// Stub config — react, path-alias, and any plugins will be added once
-// dependencies are installed in a future planning pass.
 export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "src"),
+    },
+  },
   server: {
     port: 5173,
   },
