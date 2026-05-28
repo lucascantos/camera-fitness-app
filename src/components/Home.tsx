@@ -8,6 +8,8 @@ import { getAthlete } from "@/data/athlete/athlete";
 import { getSettings } from "@/data/settings/settings";
 import {
   DEFAULT_PLANS,
+  getCachedPlans,
+  loadPlans,
   makeSession,
   type Plan,
   type PrescribedSet,
@@ -118,14 +120,15 @@ function titleCase(s: string) {
   return s.replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-/** Resolve the active plan from settings; fall back to the first default. */
+/** Resolve the active plan from settings; fall back to first available. */
 function resolveActivePlan(): Plan {
   const aid = getSettings().activePlanId;
+  const pool = getCachedPlans().length > 0 ? getCachedPlans() : DEFAULT_PLANS;
   if (aid) {
-    const m = DEFAULT_PLANS.find((p) => p.id === aid);
+    const m = pool.find((p) => p.id === aid);
     if (m) return m;
   }
-  return DEFAULT_PLANS[0];
+  return pool[0];
 }
 
 /** Compute which workout day to run, mirroring legacy's `_day_cursor % n`. */
@@ -153,10 +156,13 @@ export function Home() {
   const completedDays  = useMemo(() => weekCompletedDays(getAthlete().history), []);
 
   useEffect(() => {
-    const p = resolveActivePlan();
-    setActivePlan(p);
-    setDayIdx(resolveDayIndex(p));
-    setQuick(leastTrainedExercises(3));
+    (async () => {
+      await loadPlans();           // populate the cache before resolving
+      const p = resolveActivePlan();
+      setActivePlan(p);
+      setDayIdx(resolveDayIndex(p));
+      setQuick(leastTrainedExercises(3));
+    })();
   }, []);
 
   const today_workout: WorkoutDay | undefined = activePlan.workouts[dayIdx];
