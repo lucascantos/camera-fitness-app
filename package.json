@@ -1,0 +1,14 @@
+{
+  "name": "camera-fitness-app",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Browser-based fitness app with camera-driven rep counting. Successor to the FitnessApp pygame prototype.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}
