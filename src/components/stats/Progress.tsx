@@ -19,6 +19,17 @@ import { activityGrid } from "@/data/stats/progress";
 
 const RANGE_PILLS: TimeRange[] = ["W", "M", "3M", "Y", "All"];
 
+// The canonical "big 5" lifts — always shown in the Estimated 1RM pill
+// row, even when there's no history yet, so the chart picker matches
+// the legacy screenshot.
+const MAIN_LIFTS = [
+  "bench press",
+  "deadlift",
+  "squat",
+  "overhead press",
+  "barbell row",
+] as const;
+
 const WEEKDAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 const MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
@@ -39,10 +50,17 @@ export function Progress() {
   const progRows = useMemo(() => progressionRows(history, filtered, 4), [history, filtered]);
 
   const [chartExercise, setChartExercise] = useState<string | null>(null);
-  const exercisesForChart = top5.length > 0 ? top5 : [];
-  const chosenExercise = chartExercise && exercisesForChart.includes(chartExercise)
-    ? chartExercise
-    : (exercisesForChart[0] ?? null);
+  // Always show the 5 main lifts; append any non-main exercises that have
+  // recent volume so accessory work still appears once it's done.
+  const exercisesForChart = useMemo(() => {
+    const out: string[] = [...MAIN_LIFTS];
+    for (const ex of top5) if (!out.includes(ex)) out.push(ex);
+    return out;
+  }, [top5]);
+  const chosenExercise =
+    chartExercise && exercisesForChart.includes(chartExercise)
+      ? chartExercise
+      : exercisesForChart[0] ?? null;
 
   const rmPoints = useMemo(
     () => (chosenExercise ? oneRmSeries(filtered, chosenExercise) : []),

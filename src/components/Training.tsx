@@ -7,6 +7,7 @@ import { useCamera } from "@/hooks/useCamera";
 import { useMediapipe } from "@/hooks/useMediapipe";
 import { getTracker } from "@/tracking/exercises/registry";
 import type { ExerciseTracker } from "@/tracking/exercises/types";
+import { drawPose } from "@/tracking/drawPose";
 import { useSessionStore } from "@/stores/sessionStore";
 import { getSettings, updateSettings } from "@/data/settings/settings";
 import { coach } from "@/data/trainers/coach";
@@ -26,6 +27,7 @@ export function Training() {
 
   // Tracker — re-create on exercise change.
   const trackerRef = useRef<ExerciseTracker | null>(null);
+  const canvasRef  = useRef<HTMLCanvasElement | null>(null);
   const [reps, setReps] = useState(0);
   const [angle, setAngle] = useState<number | null>(null);
   const [hudText, setHudText] = useState("");
@@ -54,11 +56,30 @@ export function Training() {
 
   // MediaPipe — fires once per frame with landmarks.
   const onResult = useCallback((res: PoseLandmarkerResult) => {
-    const t = trackerRef.current;
-    if (!t) return;
     const screenLms = res.landmarks?.[0];
     const worldLms  = res.worldLandmarks?.[0] ?? null;
-    if (!screenLms) return;
+
+    // ── Skeleton overlay ──
+    const canvas = canvasRef.current;
+    const video  = videoRef.current;
+    if (canvas && video && screenLms) {
+      const vw = video.videoWidth  || canvas.clientWidth;
+      const vh = video.videoHeight || canvas.clientHeight;
+      if (canvas.width !== vw || canvas.height !== vh) {
+        canvas.width  = vw;
+        canvas.height = vh;
+      }
+      const ctx = canvas.getContext("2d");
+      if (ctx) drawPose(ctx, screenLms, canvas.width, canvas.height);
+    } else if (canvas && !screenLms) {
+      // No landmarks — clear stale skeleton from the previous frame.
+      const ctx = canvas.getContext("2d");
+      ctx?.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    // ── Rep counter ──
+    const t = trackerRef.current;
+    if (!t || !screenLms) return;
     const c = t.feed(screenLms, worldLms);
     setAngle(t.angle);
     if (c !== lastRepRef.current) {
@@ -70,7 +91,7 @@ export function Training() {
         setTimeout(() => advance(), 600);
       }
     }
-  }, [targetReps, isAmrap, onRep]);
+  }, [targetReps, isAmrap, onRep, videoRef]);
 
   useMediapipe(videoRef, onResult, !!trackerRef.current);
 
@@ -100,8 +121,17 @@ export function Training() {
             ref={videoRef}
             muted
             playsInline
-            className="w-full h-full object-cover"
+            className="absolute inset-0 w-full h-full object-cover"
             style={{ transform: "scaleX(-1)" }}
+          />
+          {/* Pose skeleton overlay — same mirror + object-cover as the
+              video so the dots sit on the user even when the container's
+              aspect ratio differs from the camera's. pointer-events none
+              so clicks fall through. */}
+          <canvas
+            ref={canvasRef}
+            className="absolute inset-0 w-full h-full pointer-events-none"
+            style={{ transform: "scaleX(-1)", objectFit: "cover" }}
           />
           {camError && (
             <div className="absolute inset-0 grid place-items-center text-red-300">

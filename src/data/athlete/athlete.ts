@@ -28,11 +28,11 @@ export interface Athlete {
 }
 
 const DEFAULT_ORM: Record<string, number> = {
-  squat: 80,
-  bench: 70,
-  deadlift: 80,
+  squat:            80,
+  "bench press":    70,
+  deadlift:         80,
   "overhead press": 25,
-  "barbell row": 25,
+  "barbell row":    25,
 };
 
 const DEFAULTS: Athlete = {
