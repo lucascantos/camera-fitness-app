@@ -12,9 +12,9 @@ import {
   loadPlans,
   makeSession,
   type Plan,
-  type PrescribedSet,
   type WorkoutDay,
 } from "@/data/plans/plans";
+import { getStrategy } from "@/data/progressions";
 import { useSessionStore } from "@/stores/sessionStore";
 import { PlayIcon } from "@/components/icons";
 
@@ -172,17 +172,14 @@ export function Home() {
 
   const startToday = () => {
     if (!today_workout) return;
-    const s = makeSession(
-      today_workout.name,
-      today_workout.exercises.map(
-        (e) => [e.exercise, e.sets] as [string, PrescribedSet[]],
-      ),
-      { planId: activePlan.id, workoutDayIndex: dayIdx },
-    );
+    const strategy = getStrategy(activePlan.progression);
+    const s = strategy.prepareSession(activePlan, dayIdx, getAthlete());
     startSession(s);
   };
 
   const startQuick = (name: string) => {
+    // Quick-start sessions don't belong to a plan, so no progression
+    // strategy applies — go straight to a 1×10 makeSession.
     const s = makeSession(1, [[name, [[10, 0, false]]]]);
     startSession(s);
   };

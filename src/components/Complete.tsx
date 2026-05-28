@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useSessionStore } from "@/stores/sessionStore";
-import { awardSession, getAthlete } from "@/data/athlete/athlete";
+import { awardSession, getAthlete, saveAthlete } from "@/data/athlete/athlete";
+import { loadPlans, type Plan } from "@/data/plans/plans";
+import { getStrategy } from "@/data/progressions";
 import { coach } from "@/data/trainers/coach";
 import { line } from "@/data/trainers/trainer";
 import { TrainerHUD } from "./TrainerHUD";
@@ -14,6 +16,7 @@ export function Complete() {
 
   useEffect(() => {
     if (!session) return;
+
     let repCoins = 0;
     let setCoins = 0;
     const exercises = session.workouts.map((w) => ({
@@ -28,7 +31,28 @@ export function Complete() {
     }
     const total = repCoins + setCoins;
     setTotalCoins(total);
-    awardSession(session.sessionId, exercises, total).catch(() => {/* swallow */});
+
+    (async () => {
+      await awardSession(session.sessionId, exercises, total);
+
+      // If the session belongs to a plan, let the progression strategy
+      // update working weights / TM / week index for next time.
+      const planId = session.planId;
+      const wdIdx  = session.workoutDayIndex;
+      if (planId && wdIdx !== undefined) {
+        const plans = await loadPlans();
+        const plan: Plan | undefined = plans.find((p) => p.id === planId);
+        if (plan) {
+          const strategy = getStrategy(plan.progression);
+          try {
+            strategy.recordResult(plan, wdIdx, session, getAthlete());
+            await saveAthlete();
+          } catch {
+            // A buggy strategy must never block session completion.
+          }
+        }
+      }
+    })().catch(() => { /* swallow */ });
   }, [session]);
 
   if (!session) return null;

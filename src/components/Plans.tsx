@@ -6,7 +6,6 @@ import {
   DEFAULT_PLANS,
   deletePlan as deletePlanData,
   loadPlans,
-  makeSession,
   newPlan as newPlanData,
   nextDayName,
   savePlans,
@@ -17,6 +16,8 @@ import {
   type WorkoutDay,
   type WorkoutExercise,
 } from "@/data/plans/plans";
+import { getStrategy } from "@/data/progressions";
+import { getAthlete } from "@/data/athlete/athlete";
 import { getSettings } from "@/data/settings/settings";
 import {
   EXERCISE_CATALOG,
@@ -121,12 +122,8 @@ export function Plans() {
 
   const startDay = () => {
     if (!draft || !draft.workouts[activeDayIdx]) return;
-    const day = draft.workouts[activeDayIdx];
-    const s = makeSession(
-      day.name,
-      day.exercises.map((e) => [e.exercise, e.sets] as [string, PrescribedSet[]]),
-      { planId: draft.id, workoutDayIndex: activeDayIdx },
-    );
+    const strategy = getStrategy(draft.progression);
+    const s = strategy.prepareSession(draft, activeDayIdx, getAthlete());
     startSession(s);
   };
 
@@ -247,7 +244,9 @@ export function Plans() {
                 />
                 <div className="pl-3 font-bold text-ink">{p.name}</div>
                 <div className="pl-3 text-xs text-gray-dark mt-0.5">
-                  {PROGRESSION_LABEL[p.progression]} · {p.workouts.length} day{p.workouts.length === 1 ? "" : "s"}
+                  {(getStrategy(p.progression).describe?.(p, getAthlete())
+                    ?? PROGRESSION_LABEL[p.progression])}{" "}
+                  · {p.workouts.length} day{p.workouts.length === 1 ? "" : "s"}
                 </div>
               </button>
             );
@@ -420,16 +419,21 @@ function Editor(p: EditorProps) {
 
       {/* Exercise rows */}
       <div className="mt-3 flex flex-col gap-3">
-        {day?.exercises.map((e, i) => (
-          <ExerciseRow
-            key={`${e.exercise}-${i}`}
-            index={i}
-            ex={e}
-            onRemove={() => p.onRemoveExercise(i)}
-            onSets={(d) => p.onAdjustSets(i, d)}
-            onReps={(d) => p.onAdjustReps(i, d)}
-          />
-        ))}
+        {(() => {
+          const managed = getStrategy(p.draft.progression).managedExercises?.(p.draft)
+            ?? new Set<string>();
+          return day?.exercises.map((e, i) => (
+            <ExerciseRow
+              key={`${e.exercise}-${i}`}
+              index={i}
+              ex={e}
+              autoManaged={managed.has(e.exercise)}
+              onRemove={() => p.onRemoveExercise(i)}
+              onSets={(d) => p.onAdjustSets(i, d)}
+              onReps={(d) => p.onAdjustReps(i, d)}
+            />
+          ));
+        })()}
         <button
           onClick={p.onAddExercise}
           className="border-2 border-dashed border-border text-gray-dark font-bold py-3 rounded-xl hover:bg-panel-dark transition"
@@ -475,9 +479,10 @@ function Editor(p: EditorProps) {
 }
 
 function ExerciseRow({
-  index, ex, onRemove, onSets, onReps,
+  index, ex, autoManaged, onRemove, onSets, onReps,
 }: {
   index: number; ex: WorkoutExercise;
+  autoManaged: boolean;
   onRemove(): void; onSets(d: number): void; onReps(d: number): void;
 }) {
   const meta = exerciseMeta(ex.exercise);
@@ -504,13 +509,28 @@ function ExerciseRow({
               CAM
             </span>
           )}
+          {autoManaged && (
+            <span className="px-1.5 py-0.5 rounded-md bg-accent/10 text-accent text-[10px] font-bold tracking-wider">
+              AUTO
+            </span>
+          )}
         </div>
         <div className="text-xs text-gray-dark mt-0.5">
-          {meta?.primary ?? "—"}
+          {autoManaged
+            ? "Sets & reps set by progression"
+            : (meta?.primary ?? "—")}
         </div>
       </div>
-      <Stepper label="sets" value={ex.sets.length} onMinus={() => onSets(-1)} onPlus={() => onSets(+1)} />
-      <Stepper label="reps" value={reps}             onMinus={() => onReps(-1)} onPlus={() => onReps(+1)} />
+      {autoManaged ? (
+        // Strategy controls sets & reps; the editor just shows the
+        // exercise is in the day. No steppers, no remove (still possible).
+        <div className="text-xs text-gray-dark px-2">cycle-driven</div>
+      ) : (
+        <>
+          <Stepper label="sets" value={ex.sets.length} onMinus={() => onSets(-1)} onPlus={() => onSets(+1)} />
+          <Stepper label="reps" value={reps}             onMinus={() => onReps(-1)} onPlus={() => onReps(+1)} />
+        </>
+      )}
       <button
         onClick={onRemove}
         className="w-9 h-9 rounded-lg bg-panel border border-border text-gray-dark hover:bg-panel-dark hover:text-accent transition"
