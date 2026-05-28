@@ -42,8 +42,25 @@ export const MUSCLE_COLORS: Record<Muscle, string> = {
   Triceps:   "#FFE3C7",
   Chest:     "#CCE3FF",
   Shoulders: "#FFD7E2",
-  Back:      "#D2E8FF",
+  Back:      "#FFE9B0",
   Quads:     "#D7F0DC",
   Glutes:    "#F3D7FF",
   Core:      "#FFF1C0",
 };
+
+// High-level filter groups shown as pills on the library screen.
+// Each group maps to one or more underlying Muscle values.
+export type MuscleGroup = "Arms" | "Chest" | "Shoulders" | "Back" | "Legs" | "Core";
+
+export const MUSCLE_GROUPS: { id: MuscleGroup; muscles: Muscle[] }[] = [
+  { id: "Arms",      muscles: ["Biceps", "Triceps"] },
+  { id: "Chest",     muscles: ["Chest"] },
+  { id: "Shoulders", muscles: ["Shoulders"] },
+  { id: "Back",      muscles: ["Back"] },
+  { id: "Legs",      muscles: ["Quads", "Glutes"] },
+  { id: "Core",      muscles: ["Core"] },
+];
+
+export function muscleInGroup(muscle: Muscle, group: MuscleGroup): boolean {
+  return MUSCLE_GROUPS.find((g) => g.id === group)?.muscles.includes(muscle) ?? false;
+}
