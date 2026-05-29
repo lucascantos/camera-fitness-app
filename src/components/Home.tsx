@@ -17,7 +17,7 @@ import {
 import { getStrategy } from "@/data/progressions";
 import { useSessionStore } from "@/stores/sessionStore";
 import { PlayIcon } from "@/components/icons";
-import { TrainerGreeting } from "@/components/trainer/TrainerGreeting";
+import { TrainerPanel } from "@/components/trainer/TrainerPanel";
 
 // ---------------------------------------------------------------------------
 // Constants — exercise → primary muscles, used by the least-trained scoring.
@@ -196,8 +196,20 @@ export function Home() {
   // ────────────────────────────────────────────────────────────────────────
   // Render
   // ────────────────────────────────────────────────────────────────────────
+  const trainerOn = getSettings().trainerEnabled;
+  // 3-column when the trainer is on: [character | hero | sidebar]
+  // 2-column when off so Today's Workout reclaims the negative space.
+  const gridCls = trainerOn
+    ? "grid grid-cols-[260px_1fr_320px] gap-6 px-8 pb-8 h-full"
+    : "grid grid-cols-[1fr_320px] gap-6 px-8 pb-8 h-full";
+
   return (
-    <div className="grid grid-cols-[1fr_360px] gap-6 px-8 pb-8 h-full">
+    <div className={gridCls}>
+      {/* ── Trainer column (collapses when disabled) ──────────────────── */}
+      {trainerOn && (
+        <TrainerPanel initialLine="greeting" characterHeight={340} />
+      )}
+
       {/* ── Centre column ─────────────────────────────────────────────── */}
       <section className="flex flex-col">
         {/* Date + Day name + Week dots row */}
@@ -262,9 +274,6 @@ export function Home() {
 
       {/* ── Right sidebar ─────────────────────────────────────────────── */}
       <aside className="flex flex-col gap-5">
-        {/* Trainer greeting card */}
-        <TrainerGreeting />
-
         {/* Quick Start */}
         <div className="bg-panel rounded-3xl p-5 border border-border shadow-card">
           <div className="text-[11px] font-bold tracking-widest text-gray-dark mb-3 px-1">

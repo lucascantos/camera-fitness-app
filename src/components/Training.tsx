@@ -13,6 +13,23 @@ import { getSettings, updateSettings } from "@/data/settings/settings";
 import { say } from "@/data/trainers/say";
 import type { LineCategory } from "@/data/trainers/trainer";
 import { repBeep, setCompleteChime } from "@/audio/sfx";
+import { useTrainerStore } from "@/stores/trainerStore";
+
+// Joint label per exercise — drives the status-bar sub line.
+const JOINT_BY_EXERCISE: Record<string, string> = {
+  "bicep curl":     "Elbow",
+  "push ups":       "Elbow",
+  "bench press":    "Elbow",
+  "overhead press": "Elbow",
+  "barbell row":    "Elbow",
+  "squat":          "Knee",
+  "deadlift":       "Hip",
+  "lateral raise":  "Shoulder",
+};
+
+// How long a trainer line lives in the status bar before the fallback
+// (exercise name) reappears.
+const TRAINER_LINE_TTL_MS = 4000;
 
 export function Training() {
   const { session, workoutIdx, setIdx, setCursor, goTo } = useSessionStore();
@@ -31,6 +48,17 @@ export function Training() {
   const [reps, setReps] = useState(0);
   const [angle, setAngle] = useState<number | null>(null);
   const lastRepRef = useRef(0);
+
+  // Live trainer line — fades back to the exercise name after TTL.
+  const trainerText = useTrainerStore((s) => s.text);
+  const trainerTick = useTrainerStore((s) => s.tick);
+  const [statusLine, setStatusLine] = useState<string>("");
+  useEffect(() => {
+    if (!trainerText || !getSettings().trainerEnabled) return;
+    setStatusLine(trainerText);
+    const id = setTimeout(() => setStatusLine(""), TRAINER_LINE_TTL_MS);
+    return () => clearTimeout(id);
+  }, [trainerTick, trainerText]);
 
   useEffect(() => {
     trackerRef.current = getTracker(exercise);
@@ -150,16 +178,27 @@ export function Training() {
             </div>
           )}
         </div>
-        <div className="mt-3 bg-panel rounded-2xl p-3 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-good grid place-items-center font-bold">★</div>
-          <div className="flex-1">
-            <div className="font-bold">{titleCase(exercise)}</div>
-            <div className="text-sm text-gray-dark">
-              {angle != null ? `Joint at ${Math.round(angle)}°` : "Move into frame"}
+        {/* Status bar — trainer's current line in bold, joint feedback
+            underneath, angle pill on the right. Matches the legacy
+            white-pill toast pattern. */}
+        <div className="mt-3 bg-panel rounded-2xl p-3 flex items-center gap-3 shadow-card border border-border">
+          <div className="w-10 h-10 rounded-full bg-good grid place-items-center text-white text-lg shrink-0">
+            ↻
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="font-bold text-ink truncate">
+              {statusLine || titleCase(exercise)}
+            </div>
+            <div className="text-sm text-gray-dark truncate">
+              {angle != null
+                ? `${JOINT_BY_EXERCISE[exercise] ?? "Joint"} at ${Math.round(angle)}° — keep it tight`
+                : trackerRef.current
+                  ? "Move into frame so I can see you"
+                  : "Manual mode — tap Set complete when done"}
             </div>
           </div>
           {angle != null && (
-            <div className="px-3 py-1 rounded-full bg-coin text-white font-bold">
+            <div className="px-3 py-1 rounded-full bg-coin text-white font-bold shrink-0">
               {Math.round(angle)}°
             </div>
           )}

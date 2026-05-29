@@ -1,6 +1,7 @@
 // High-level "the trainer says X" function. Picks a line from the
 // active trainer's dialogue pool, posts the text to the trainer
-// store (so TrainerHUD displays it), and plays the matched audio.
+// store (so TrainerPanel + Training's status bar surface it), and
+// plays the matched audio.
 
 import { playVoice } from "@/audio/voice";
 import { postLine } from "@/stores/trainerStore";

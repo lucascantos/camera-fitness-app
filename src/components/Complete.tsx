@@ -7,6 +7,8 @@ import { loadPlans, type Plan } from "@/data/plans/plans";
 import { getStrategy } from "@/data/progressions";
 import { say } from "@/data/trainers/say";
 import { fanfare } from "@/audio/sfx";
+import { getSettings } from "@/data/settings/settings";
+import { TrainerPanel } from "@/components/trainer/TrainerPanel";
 
 export function Complete() {
   const { session, endSession } = useSessionStore();
@@ -64,9 +66,15 @@ export function Complete() {
   );
   const totalSets = session.workouts.reduce((s, w) => s + w.sets.length, 0);
 
+  const trainerOn = getSettings().trainerEnabled;
+  const gridCls = trainerOn
+    ? "grid grid-cols-[260px_1fr] gap-6 p-10 h-full"
+    : "p-10 h-full";
+
   return (
-    <div className="p-10 h-full">
-      <div className="bg-panel rounded-3xl p-10 max-w-3xl">
+    <div className={gridCls}>
+      {trainerOn && <TrainerPanel characterHeight={320} />}
+      <div className="bg-panel rounded-3xl p-10 max-w-3xl border border-border shadow-card">
         <div className="text-accent text-5xl font-black leading-none">SESSION</div>
         <div className="text-accent text-5xl font-black leading-none">COMPLETE!</div>
 

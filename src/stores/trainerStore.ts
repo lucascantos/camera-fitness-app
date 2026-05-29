@@ -1,5 +1,6 @@
 // Holds the currently-spoken trainer line. Centralised so any scene
-// can call say() and the globally-mounted TrainerHUD picks it up.
+// can call say() and whichever surface is mounted (TrainerPanel,
+// Training's status bar, etc.) picks it up.
 
 import { create } from "zustand";
 

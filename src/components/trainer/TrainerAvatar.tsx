@@ -8,11 +8,16 @@ interface Props {
   trainer: Trainer;
   size?: number;
   talking?: boolean;
+  orientation?: "chip" | "portrait";
 }
 
-export function TrainerAvatar({ trainer, size = 96, talking = false }: Props) {
+export function TrainerAvatar({
+  trainer, size = 96, talking = false, orientation = "chip",
+}: Props) {
   if (trainer.spritePath === "svg:coach") {
-    return <CoachAvatar size={size} talking={talking} />;
+    return (
+      <CoachAvatar size={size} talking={talking} orientation={orientation} />
+    );
   }
   // Fallback: monogram chip. Used when the trainer ships a raster
   // sprite we haven't built an SVG for yet.

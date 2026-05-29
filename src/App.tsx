@@ -6,7 +6,6 @@ import { unlockAudio } from "@/audio/sfx";
 import { startMusic } from "@/audio/music";
 
 import { TopNav }      from "@/components/TopNav";
-import { TrainerHUD }  from "@/components/TrainerHUD";
 import { Home }        from "@/components/Home";
 import { Plans }       from "@/components/Plans";
 import { Exercises }   from "@/components/Exercises";
@@ -64,9 +63,6 @@ export default function App() {
         {scene === "stats"     && <Stats     />}
         {scene === "settings"  && <Settings  />}
       </main>
-
-      {/* Global trainer bubble — any say() call surfaces here. */}
-      <TrainerHUD />
     </div>
   );
 }
