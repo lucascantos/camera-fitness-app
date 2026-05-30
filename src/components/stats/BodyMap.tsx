@@ -257,6 +257,26 @@ function Figure({ tint, isBack }: { tint: string; isBack?: boolean }) {
       <ellipse cx={48} cy={278} rx={10} ry={11} />
       <ellipse cx={172} cy={278} rx={10} ry={11} />
 
+      {/* LEFT DELTOID / SHOULDER CAP — rendered after the arm so the
+          bicep curve tucks under. Outer edge extends past the arm so
+          the silhouette gets the widest point at the shoulder, not
+          the bicep. */}
+      <path d="
+        M 96 92
+        C 72 82 50 84 36 102
+        C 28 118 28 134 36 146
+        C 48 146 62 138 72 124
+        C 80 112 88 100 96 92 Z
+      " />
+      {/* RIGHT DELTOID / SHOULDER CAP (mirror) */}
+      <path d="
+        M 124 92
+        C 148 82 170 84 184 102
+        C 192 118 192 134 184 146
+        C 172 146 158 138 148 124
+        C 140 112 132 100 124 92 Z
+      " />
+
       {/* LEFT THIGH — hip → knee */}
       <path d="
         M 68 304
