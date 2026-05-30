@@ -1,5 +1,6 @@
 // Popup shown on app load when a persisted workout session exists.
-// Options: Continue, End session, or dismiss (close).
+// Two primary actions side-by-side: End session · Continue.
+// Dismiss via the ✕ in the corner or by clicking the backdrop.
 
 import { useSessionStore } from "@/stores/sessionStore";
 import { PlayIcon } from "@/components/icons";
@@ -18,12 +19,34 @@ export function SessionRecovery({ onDismiss }: { onDismiss(): void }) {
   const exLabel = `Exercise ${workoutIdx + 1} of ${session.workouts.length}`;
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-ink/50">
-      <div className="bg-panel rounded-3xl shadow-card border border-border p-8 max-w-md w-full mx-4">
+    // Backdrop — clicking it dismisses.
+    <div
+      onClick={onDismiss}
+      className="fixed inset-0 z-50 grid place-items-center bg-ink/50"
+    >
+      {/* Dialog — stopPropagation so inner clicks don't bubble to backdrop. */}
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="relative bg-panel rounded-3xl shadow-card border border-border p-8 max-w-md w-full mx-4"
+      >
+        {/* Close ✕ in the corner */}
+        <button
+          onClick={onDismiss}
+          aria-label="Close"
+          title="Close"
+          className="absolute top-3 right-3 w-9 h-9 rounded-full grid place-items-center text-gray-dark hover:text-ink hover:bg-panel-dark transition"
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"
+               stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <line x1="2" y1="2"  x2="12" y2="12" />
+            <line x1="12" y1="2" x2="2"  y2="12" />
+          </svg>
+        </button>
+
         <div className="text-[11px] font-bold tracking-widest text-good mb-2">
           WORKOUT IN PROGRESS
         </div>
-        <h2 className="text-2xl font-extrabold text-ink">
+        <h2 className="text-2xl font-extrabold text-ink pr-8">
           {titleCase(exercise)}
         </h2>
         <p className="text-gray-dark mt-1">
@@ -33,14 +56,7 @@ export function SessionRecovery({ onDismiss }: { onDismiss(): void }) {
           You have an unfinished workout. Would you like to continue?
         </p>
 
-        <div className="flex flex-col gap-2 mt-6">
-          <button
-            onClick={() => { goTo("training"); onDismiss(); }}
-            className="w-full bg-accent text-white font-bold py-3 rounded-2xl text-base flex items-center justify-center gap-2 hover:bg-accent-hov transition"
-          >
-            <PlayIcon size={12} color="#FFFFFF" />
-            Continue workout
-          </button>
+        <div className="grid grid-cols-2 gap-3 mt-6">
           <button
             onClick={() => { endSession(); onDismiss(); }}
             className="w-full bg-panel-dark text-ink font-bold py-3 rounded-2xl text-base hover:bg-border transition"
@@ -48,10 +64,11 @@ export function SessionRecovery({ onDismiss }: { onDismiss(): void }) {
             End session
           </button>
           <button
-            onClick={onDismiss}
-            className="w-full text-gray-dark font-bold py-2 text-sm hover:text-ink transition"
+            onClick={() => { goTo("training"); onDismiss(); }}
+            className="w-full bg-accent text-white font-bold py-3 rounded-2xl text-base flex items-center justify-center gap-2 hover:bg-accent-hov transition"
           >
-            Close
+            <PlayIcon size={12} color="#FFFFFF" />
+            Continue
           </button>
         </div>
       </div>
