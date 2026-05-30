@@ -17,9 +17,9 @@ import {
 // BODY_TOP..BODY_TOP+BODY_SPAN vertically so they always land inside
 // the silhouette.
 const FW        = 220;
-const FH        = 480;
+const FH        = 460;
 const BODY_TOP  = 92;   // top of shoulders / torso
-const BODY_SPAN = 358;  // shoulders → ankle (shorter torso, longer legs)
+const BODY_SPAN = 338;  // shoulders → ankle (shorter torso, longer legs)
 
 export function BodyMap() {
   const [hovered, setHovered] = useState<string | null>(null);
@@ -203,19 +203,18 @@ function Figure({ tint, isBack }: { tint: string; isBack?: boolean }) {
       {/* NECK */}
       <path d="M 100 78 L 120 78 L 124 94 L 96 94 Z" />
 
-      {/* TORSO — shoulders (62→158, w=96) → chest bulge → waist
-          (76→144, w=68) → hips (68→152, w=84). Shorter overall: hip
-          line at y=250 instead of y=304. */}
+      {/* TORSO — same shoulder→chest→waist→hip widths as before,
+          compressed vertically so the hip line sits at y=230. */}
       <path d="
         M 96 92
         L 62 100
-        C 50 128 52 162 64 184
-        C 72 198 80 212 76 230
-        C 72 240 64 250 68 250
-        L 152 250
-        C 156 250 148 240 144 230
-        C 140 212 148 198 156 184
-        C 168 162 170 128 158 100
+        C 50 122 52 152 64 174
+        C 72 188 80 200 76 214
+        C 72 222 64 230 68 230
+        L 152 230
+        C 156 230 148 222 144 214
+        C 140 200 148 188 156 174
+        C 168 152 170 122 158 100
         L 124 92 Z
       " />
 
@@ -276,47 +275,47 @@ function Figure({ tint, isBack }: { tint: string; isBack?: boolean }) {
         C 138 106 132 98 124 92 Z
       " />
 
-      {/* LEFT THIGH — hip → knee. Now y=250..360 (110 px tall) */}
+      {/* LEFT THIGH — hip → knee. y=230..345 (115 px tall) */}
       <path d="
-        M 70 250
-        C 66 286 66 322 74 360
-        L 102 360
-        C 108 322 110 286 108 250 Z
+        M 70 230
+        C 66 264 66 304 74 345
+        L 102 345
+        C 108 304 110 264 108 230 Z
       " />
       {/* RIGHT THIGH */}
       <path d="
-        M 112 250
-        C 110 286 112 322 118 360
-        L 146 360
-        C 154 322 154 286 150 250 Z
+        M 112 230
+        C 110 264 112 304 118 345
+        L 146 345
+        C 154 304 154 264 150 230 Z
       " />
 
-      {/* LEFT CALF — knee → ankle, taper */}
+      {/* LEFT CALF — knee → ankle, taper. y=345..430 (85 px) */}
       <path d="
-        M 76 360
-        C 72 386 74 414 80 434
-        C 84 442 92 442 96 434
-        C 102 414 100 386 100 360 Z
+        M 76 345
+        C 72 372 74 402 80 422
+        C 84 430 92 430 96 422
+        C 102 402 100 372 100 345 Z
       " />
       {/* RIGHT CALF */}
       <path d="
-        M 120 360
-        C 118 386 118 414 124 434
-        C 128 442 136 442 140 434
-        C 146 414 148 386 144 360 Z
+        M 120 345
+        C 118 372 118 402 124 422
+        C 128 430 136 430 140 422
+        C 146 402 148 372 144 345 Z
       " />
 
       {/* FEET */}
-      <ellipse cx={88} cy={448} rx={14} ry={6} />
-      <ellipse cx={132} cy={448} rx={14} ry={6} />
+      <ellipse cx={88} cy={436} rx={14} ry={6} />
+      <ellipse cx={132} cy={436} rx={14} ry={6} />
 
       {/* SUBTLE DETAIL — front: chest centre line. back: spine. */}
       {!isBack && (
-        <line x1={110} y1={104} x2={110} y2={170}
+        <line x1={110} y1={104} x2={110} y2={160}
               stroke={stroke} strokeWidth={0.6} opacity={0.4} />
       )}
       {isBack && (
-        <line x1={110} y1={104} x2={110} y2={260}
+        <line x1={110} y1={104} x2={110} y2={228}
               stroke={stroke} strokeWidth={0.6} opacity={0.45} />
       )}
     </g>
