@@ -13,13 +13,13 @@ import {
   type Region,
 } from "@/data/stats/bodyMap";
 
-// Figure SVG dimensions. The body itself spans BODY_TOP..BODY_TOP+BODY_SPAN
-// vertically; muscle regions (0..1 normalised) map into that range so they
-// can't overflow past the calves.
+// Figure SVG dimensions. Muscle regions (0..1 normalised) map into
+// BODY_TOP..BODY_TOP+BODY_SPAN vertically so they always land inside
+// the silhouette.
 const FW        = 220;
-const FH        = 480;
-const BODY_TOP  = 80;   // top of shoulders / torso
-const BODY_SPAN = 370;  // shoulders → ankle
+const FH        = 500;
+const BODY_TOP  = 92;   // top of shoulders / torso
+const BODY_SPAN = 380;  // shoulders → ankle
 
 export function BodyMap() {
   const [hovered, setHovered] = useState<string | null>(null);
@@ -191,123 +191,113 @@ function Figure({ tint, isBack }: { tint: string; isBack?: boolean }) {
       strokeLinejoin="round"
       strokeLinecap="round"
     >
-      {/* HEAD — egg-shaped, slightly tapered at the chin */}
+      {/* HEAD — egg-shaped */}
       <path d="
-        M 110 12
-        C 90 12 82 28 82 44
-        C 82 62 92 72 110 72
-        C 128 72 138 62 138 44
-        C 138 28 130 12 110 12 Z
+        M 110 18
+        C 90 18 82 34 82 50
+        C 82 68 92 80 110 80
+        C 128 80 138 68 138 50
+        C 138 34 130 18 110 18 Z
       " />
 
-      {/* NECK — short trapezoid widening into the shoulders */}
-      <path
-        d={
-          isBack
-            ? "M 100 70 L 120 70 L 124 84 L 96 84 Z"
-            : "M 100 70 L 120 70 L 124 84 L 96 84 Z"
-        }
-      />
+      {/* NECK */}
+      <path d="M 100 78 L 120 78 L 124 94 L 96 94 Z" />
 
-      {/* TORSO — shoulders (50→170) → waist (78→142) → hips (66→154) */}
+      {/* TORSO — shoulders (62→158, w=96) → waist (78→142, w=64) →
+          hips (66→154, w=88). Waist/shoulder ratio ≈ 0.67 for an athletic
+          but proportional male torso. Smooth bezier all the way. */}
       <path d="
-        M 96 80
-        C 70 84 50 92 48 100
-        C 44 124 46 156 50 184
-        C 54 212 64 244 72 270
-        L 76 292
-        L 144 292
-        L 148 270
-        C 156 244 166 212 170 184
-        C 174 156 176 124 172 100
-        C 170 92 150 84 124 80
-        Z
+        M 96 92
+        L 62 100
+        C 52 124 54 168 64 200
+        C 70 224 76 248 78 270
+        C 80 286 74 296 66 304
+        L 154 304
+        C 146 296 140 286 142 270
+        C 144 248 150 224 156 200
+        C 166 168 168 124 158 100
+        L 124 92 Z
       " />
 
-      {/* LEFT UPPER ARM — shoulder → elbow, slight bicep bulge */}
+      {/* LEFT UPPER ARM — shoulder → elbow */}
       <path d="
-        M 50 96
-        C 38 104 32 124 30 156
-        C 28 178 30 194 36 198
-        C 44 198 50 188 52 174
-        L 56 138
-        C 58 116 56 102 50 96 Z
+        M 62 102
+        C 46 112 38 138 36 168
+        C 36 192 44 204 52 200
+        C 56 186 60 168 62 144
+        C 64 124 64 110 62 102 Z
       " />
-      {/* RIGHT UPPER ARM (mirror) */}
+      {/* RIGHT UPPER ARM */}
       <path d="
-        M 170 96
-        C 182 104 188 124 190 156
-        C 192 178 190 194 184 198
-        C 176 198 170 188 168 174
-        L 164 138
-        C 162 116 164 102 170 96 Z
+        M 158 102
+        C 174 112 182 138 184 168
+        C 184 192 176 204 168 200
+        C 164 186 160 168 158 144
+        C 156 124 156 110 158 102 Z
       " />
 
-      {/* LEFT FOREARM — elbow → wrist, tapers in */}
+      {/* LEFT FOREARM */}
       <path d="
-        M 32 196
-        C 30 222 30 244 32 258
-        C 34 266 40 270 46 266
-        C 50 256 50 240 48 222
-        L 46 200
-        C 42 196 36 195 32 196 Z
+        M 36 202
+        C 34 226 36 250 42 268
+        C 46 274 54 274 56 266
+        C 58 246 56 224 52 204
+        C 48 200 40 200 36 202 Z
       " />
-      {/* RIGHT FOREARM (mirror) */}
+      {/* RIGHT FOREARM */}
       <path d="
-        M 188 196
-        C 190 222 190 244 188 258
-        C 186 266 180 270 174 266
-        C 170 256 170 240 172 222
-        L 174 200
-        C 178 196 184 195 188 196 Z
+        M 184 202
+        C 186 226 184 250 178 268
+        C 174 274 166 274 164 266
+        C 162 246 164 224 168 204
+        C 172 200 180 200 184 202 Z
       " />
 
-      {/* LEFT HAND */}
-      <ellipse cx={40} cy={278} rx={9} ry={12} />
-      {/* RIGHT HAND */}
-      <ellipse cx={180} cy={278} rx={9} ry={12} />
+      {/* HANDS */}
+      <ellipse cx={48} cy={278} rx={10} ry={11} />
+      <ellipse cx={172} cy={278} rx={10} ry={11} />
 
-      {/* LEFT THIGH — hip → knee, slight taper */}
+      {/* LEFT THIGH — hip → knee */}
       <path d="
-        M 76 290
-        C 72 312 70 340 72 372
-        L 104 372
-        C 106 340 108 312 108 290 Z
+        M 68 304
+        C 64 338 64 376 72 410
+        L 104 410
+        C 108 376 110 338 108 304 Z
       " />
-      {/* RIGHT THIGH (mirror) */}
+      {/* RIGHT THIGH */}
       <path d="
-        M 112 290
-        C 112 312 114 340 116 372
-        L 148 372
-        C 150 340 148 312 144 290 Z
-      " />
-
-      {/* LEFT CALF — knee → ankle, narrow at ankle */}
-      <path d="
-        M 74 372
-        C 72 396 74 424 80 446
-        C 84 452 96 452 100 446
-        C 104 424 104 396 102 372 Z
-      " />
-      {/* RIGHT CALF (mirror) */}
-      <path d="
-        M 118 372
-        C 116 396 116 424 120 446
-        C 124 452 136 452 140 446
-        C 146 424 148 396 146 372 Z
+        M 112 304
+        C 110 338 112 376 116 410
+        L 148 410
+        C 156 376 156 338 152 304 Z
       " />
 
-      {/* FEET — small ovals at the bottom */}
-      <ellipse cx={90}  cy={458} rx={14} ry={6} />
-      <ellipse cx={130} cy={458} rx={14} ry={6} />
+      {/* LEFT CALF — taper to ankle */}
+      <path d="
+        M 74 410
+        C 70 432 72 456 78 474
+        C 82 480 92 480 96 474
+        C 102 456 100 432 98 410 Z
+      " />
+      {/* RIGHT CALF */}
+      <path d="
+        M 122 410
+        C 120 432 120 456 124 474
+        C 128 480 138 480 142 474
+        C 148 456 146 432 146 410 Z
+      " />
 
-      {/* SUBTLE DETAIL — center line for front, spine line for back */}
+      {/* FEET */}
+      <ellipse cx={86} cy={486} rx={14} ry={6} />
+      <ellipse cx={134} cy={486} rx={14} ry={6} />
+
+      {/* SUBTLE DETAIL — front: chest centre line. back: spine. */}
       {!isBack && (
-        <line x1={110} y1={90} x2={110} y2={170}
+        <line x1={110} y1={104} x2={110} y2={170}
               stroke={stroke} strokeWidth={0.6} opacity={0.4} />
       )}
       {isBack && (
-        <line x1={110} y1={90} x2={110} y2={260}
+        <line x1={110} y1={104} x2={110} y2={260}
               stroke={stroke} strokeWidth={0.6} opacity={0.45} />
       )}
     </g>
