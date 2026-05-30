@@ -274,6 +274,9 @@ export function Home() {
 
       {/* ── Right sidebar ─────────────────────────────────────────────── */}
       <aside className="flex flex-col gap-5">
+        {/* Continue active session */}
+        <ContinueCard />
+
         {/* Quick Start */}
         <div className="bg-panel rounded-3xl p-5 border border-border shadow-card">
           <div className="text-[11px] font-bold tracking-widest text-gray-dark mb-3 px-1">
@@ -352,6 +355,33 @@ function Tile({ label, value }: { label: string; value: string }) {
         {label}
       </div>
       <div className="text-3xl font-extrabold mt-2 text-ink">{value}</div>
+    </div>
+  );
+}
+
+function ContinueCard() {
+  const { session, workoutIdx, setIdx, goTo } = useSessionStore();
+  if (!session) return null;
+
+  const workout = session.workouts[workoutIdx];
+  const exercise = workout?.exercise ?? "Workout";
+  const setLabel = `Set ${setIdx + 1}/${workout?.sets.length ?? 0}`;
+  const exLabel  = `Ex ${workoutIdx + 1}/${session.workouts.length}`;
+
+  return (
+    <div className="bg-good rounded-3xl p-5 shadow-card">
+      <div className="text-[11px] font-bold tracking-widest text-white/80 mb-1">
+        WORKOUT IN PROGRESS
+      </div>
+      <div className="text-xl font-extrabold text-white">{titleCase(exercise)}</div>
+      <div className="text-sm text-white/80 mt-0.5">{exLabel} · {setLabel}</div>
+      <button
+        onClick={() => goTo("training")}
+        className="mt-3 w-full bg-white text-ink font-bold py-3 rounded-2xl text-base flex items-center justify-center gap-2 hover:bg-panel-dark transition"
+      >
+        <PlayIcon size={12} color="#1A1330" />
+        Continue
+      </button>
     </div>
   );
 }

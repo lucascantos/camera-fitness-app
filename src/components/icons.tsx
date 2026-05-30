@@ -1,6 +1,31 @@
 // Tiny shared icon set so every Start button renders the same triangle
 // regardless of Tailwind's border-width quirks.
 
+export function BackIcon({
+  size = 20,
+  color = "currentColor",
+}: {
+  size?: number;
+  color?: string;
+}) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      style={{ display: "inline-block", verticalAlign: "middle" }}
+    >
+      <polyline points="15 18 9 12 15 6" />
+    </svg>
+  );
+}
+
 export function PlayIcon({
   size = 14,
   color = "currentColor",

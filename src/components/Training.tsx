@@ -14,6 +14,7 @@ import { say } from "@/data/trainers/say";
 import type { LineCategory } from "@/data/trainers/trainer";
 import { repBeep, setCompleteChime } from "@/audio/sfx";
 import { useTrainerStore } from "@/stores/trainerStore";
+import { BackIcon } from "@/components/icons";
 
 // Joint label per exercise — drives the status-bar sub line.
 const JOINT_BY_EXERCISE: Record<string, string> = {
@@ -94,19 +95,35 @@ export function Training() {
     const worldLms  = res.worldLandmarks?.[0] ?? null;
 
     // ── Skeleton overlay ──
+    // The canvas bitmap is sized to match its CSS box (not the video's
+    // native resolution).  We compute the same cover-crop transform the
+    // <video> element applies via object-fit:cover and map the normalised
+    // landmarks into canvas-pixel space so the dots sit on the user.
     const canvas = canvasRef.current;
     const video  = videoRef.current;
     if (canvas && video && screenLms) {
-      const vw = video.videoWidth  || canvas.clientWidth;
-      const vh = video.videoHeight || canvas.clientHeight;
-      if (canvas.width !== vw || canvas.height !== vh) {
-        canvas.width  = vw;
-        canvas.height = vh;
+      const cw = canvas.clientWidth;
+      const ch = canvas.clientHeight;
+      if (canvas.width !== cw || canvas.height !== ch) {
+        canvas.width  = cw;
+        canvas.height = ch;
       }
+
+      const vw = video.videoWidth  || cw;
+      const vh = video.videoHeight || ch;
+      const s  = Math.max(cw / vw, ch / vh);          // cover scale
+      const ox = (cw - vw * s) / 2;                    // horizontal offset (negative = cropped)
+      const oy = (ch - vh * s) / 2;                    // vertical   offset
+
+      const mapped = screenLms.map((lm) => ({
+        ...lm,
+        x: (lm.x * vw * s + ox) / cw,
+        y: (lm.y * vh * s + oy) / ch,
+      }));
+
       const ctx = canvas.getContext("2d");
-      if (ctx) drawPose(ctx, screenLms, canvas.width, canvas.height);
+      if (ctx) drawPose(ctx, mapped, cw, ch);
     } else if (canvas && !screenLms) {
-      // No landmarks — clear stale skeleton from the previous frame.
       const ctx = canvas.getContext("2d");
       ctx?.clearRect(0, 0, canvas.width, canvas.height);
     }
@@ -127,7 +144,7 @@ export function Training() {
     }
   }, [targetReps, isAmrap, onRep, videoRef]);
 
-  useMediapipe(videoRef, onResult, !!trackerRef.current);
+  const { ready: mpReady, error: mpError } = useMediapipe(videoRef, onResult, !!trackerRef.current);
 
   function advance() {
     if (!session || !workout) return;
@@ -165,11 +182,21 @@ export function Training() {
           <canvas
             ref={canvasRef}
             className="absolute inset-0 w-full h-full pointer-events-none"
-            style={{ transform: "scaleX(-1)", objectFit: "cover" }}
+            style={{ transform: "scaleX(-1)" }}
           />
           {camError && (
             <div className="absolute inset-0 grid place-items-center text-red-300">
               Camera error: {camError}
+            </div>
+          )}
+          {mpError && (
+            <div className="absolute top-3 left-3 px-3 py-1 bg-red-600/80 rounded-full text-sm text-white">
+              Pose model error: {mpError}
+            </div>
+          )}
+          {trackerRef.current && !mpReady && !mpError && (
+            <div className="absolute top-3 left-3 px-3 py-1 bg-bg/80 rounded-full text-sm">
+              Loading pose model…
             </div>
           )}
           {!trackerRef.current && (
@@ -207,6 +234,27 @@ export function Training() {
 
       {/* Right column */}
       <div className="flex flex-col gap-3">
+        {/* Header: back + exercise title + settings gear */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 min-w-0">
+            <button
+              onClick={() => goTo("home")}
+              className="w-10 h-10 rounded-xl bg-panel border border-border grid place-items-center text-gray-dark hover:bg-panel-dark transition shrink-0"
+              title="Back to menu"
+            >
+              <BackIcon size={20} />
+            </button>
+            <div className="text-lg font-bold truncate">{titleCase(exercise)}</div>
+          </div>
+          <button
+            onClick={() => goTo("settings")}
+            className="w-10 h-10 rounded-xl bg-panel border border-border grid place-items-center text-gray-dark hover:bg-panel-dark transition"
+            title="Settings"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+
         {/* Reps */}
         <div className="bg-accent rounded-3xl p-5 text-on_accent">
           <div className="text-xs font-bold tracking-widest opacity-80">

@@ -1,26 +1,32 @@
 import { useEffect, useState } from "react";
 import { getSettings, loadSettings } from "@/data/settings/settings";
 import { loadAthlete } from "@/data/athlete/athlete";
-import { useSessionStore } from "@/stores/sessionStore";
+import { useSessionStore, loadPersistedSession } from "@/stores/sessionStore";
 import { unlockAudio } from "@/audio/sfx";
 import { startMusic } from "@/audio/music";
 
-import { TopNav }      from "@/components/TopNav";
-import { Home }        from "@/components/Home";
-import { Plans }       from "@/components/Plans";
-import { Exercises }   from "@/components/Exercises";
-import { Training }    from "@/components/Training";
-import { Rest }        from "@/components/Rest";
-import { Complete }    from "@/components/Complete";
-import { Stats }       from "@/components/Stats";
-import { Settings }    from "@/components/Settings";
+import { TopNav }            from "@/components/TopNav";
+import { Home }              from "@/components/Home";
+import { Plans }             from "@/components/Plans";
+import { Exercises }         from "@/components/Exercises";
+import { Training }          from "@/components/Training";
+import { Rest }              from "@/components/Rest";
+import { Complete }          from "@/components/Complete";
+import { Stats }             from "@/components/Stats";
+import { Settings }          from "@/components/Settings";
+import { SessionRecovery }   from "@/components/SessionRecovery";
 
 export default function App() {
   const { scene } = useSessionStore();
   const [ready, setReady] = useState(false);
+  const [showRecovery, setShowRecovery] = useState(false);
 
   useEffect(() => {
-    Promise.all([loadSettings(), loadAthlete()]).then(() => setReady(true));
+    Promise.all([loadSettings(), loadAthlete()]).then(async () => {
+      const persisted = await loadPersistedSession();
+      if (persisted) setShowRecovery(true);
+      setReady(true);
+    });
   }, []);
 
   // First user gesture unlocks WebAudio (iOS Safari) and kicks the music
@@ -63,6 +69,9 @@ export default function App() {
         {scene === "stats"     && <Stats     />}
         {scene === "settings"  && <Settings  />}
       </main>
+      {showRecovery && (
+        <SessionRecovery onDismiss={() => setShowRecovery(false)} />
+      )}
     </div>
   );
 }
