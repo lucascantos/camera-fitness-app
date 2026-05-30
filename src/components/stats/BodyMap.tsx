@@ -143,26 +143,14 @@ function FigurePanel({
       </div>
       <div className="grid place-items-center">
         <svg viewBox={`0 0 ${FW} ${FH}`} width="100%" style={{ maxWidth: 260 }}>
-          {/* tinted figure background */}
-          <Figure tint={tint} isBack={!front} />
-          {/* muscle overlay ellipses */}
-          {Object.entries(regions).map(([muscle, rects]) =>
-            rects.map((r, i) => {
-              const reps = counts[muscle] ?? 0;
-              const heat = heatLevel(reps, maxReps);
-              const isHovered = hovered === muscle;
-              return (
-                <RegionEllipse
-                  key={`${muscle}-${i}`}
-                  region={r}
-                  heat={heat}
-                  hovered={isHovered}
-                  onEnter={() => onHover(muscle)}
-                  onLeave={() => onHover(null)}
-                />
-              );
-            }),
-          )}
+          <Figure
+            tint={tint}
+            isBack={!front}
+            counts={counts}
+            maxReps={maxReps}
+            hovered={hovered}
+            onHover={onHover}
+          />
         </svg>
       </div>
     </div>
@@ -179,135 +167,122 @@ function FigurePanel({
  * back view doesn't look identical to the front; the colour tint does
  * most of the differentiation work.
  */
-function Figure({ tint, isBack }: { tint: string; isBack?: boolean }) {
+// Body part path data. Stored as constants so the front and back views
+// share geometry; only the muscle assignment per part differs.
+const HEAD_PATH    = "M 110 18 C 90 18 82 34 82 50 C 82 68 92 80 110 80 C 128 80 138 68 138 50 C 138 34 130 18 110 18 Z";
+const NECK_PATH    = "M 100 78 L 120 78 L 124 94 L 96 94 Z";
+
+// Torso split into 3 horizontal bands so each can carry its own muscle:
+// chest area, abs area, hip area. The combined boundaries match the
+// original single-piece torso outline.
+const CHEST_PATH   = "M 96 92 L 62 100 C 50 122 50 145 56 158 L 164 158 C 170 145 170 122 158 100 L 124 92 Z";
+const ABS_PATH     = "M 56 158 L 164 158 C 168 175 160 200 144 210 L 76 210 C 60 200 52 175 56 158 Z";
+const HIP_PATH     = "M 76 210 L 144 210 C 148 222 156 230 152 230 L 68 230 C 64 230 72 222 76 210 Z";
+
+const LEFT_UPPER_ARM_PATH  = "M 62 102 C 46 112 38 138 36 168 C 36 192 44 204 52 200 C 56 186 60 168 62 144 C 64 124 64 110 62 102 Z";
+const RIGHT_UPPER_ARM_PATH = "M 158 102 C 174 112 182 138 184 168 C 184 192 176 204 168 200 C 164 186 160 168 158 144 C 156 124 156 110 158 102 Z";
+
+const LEFT_FOREARM_PATH    = "M 36 202 C 34 226 36 250 42 268 C 46 274 54 274 56 266 C 58 246 56 224 52 204 C 48 200 40 200 36 202 Z";
+const RIGHT_FOREARM_PATH   = "M 184 202 C 186 226 184 250 178 268 C 174 274 166 274 164 266 C 162 246 164 224 168 204 C 172 200 180 200 184 202 Z";
+
+const LEFT_DELTOID_PATH    = "M 96 92 C 76 84 58 86 46 100 C 38 114 36 128 44 138 C 56 136 68 128 74 116 C 82 106 88 98 96 92 Z";
+const RIGHT_DELTOID_PATH   = "M 124 92 C 144 84 162 86 174 100 C 182 114 184 128 176 138 C 164 136 152 128 146 116 C 138 106 132 98 124 92 Z";
+
+const LEFT_THIGH_PATH      = "M 70 230 C 66 264 66 304 74 345 L 102 345 C 108 304 110 264 108 230 Z";
+const RIGHT_THIGH_PATH     = "M 112 230 C 110 264 112 304 118 345 L 146 345 C 154 304 154 264 150 230 Z";
+
+const LEFT_CALF_PATH       = "M 76 345 C 72 372 74 402 80 422 C 84 430 92 430 96 422 C 102 402 100 372 100 345 Z";
+const RIGHT_CALF_PATH      = "M 120 345 C 118 372 118 402 124 422 C 128 430 136 430 140 422 C 146 402 148 372 144 345 Z";
+
+/** Render the body. Each body part that maps to a muscle gets a fill
+ *  derived from that muscle's heat; non-muscle parts (head/neck/hands/
+ *  feet) stay at the neutral tint. Hovering a part highlights it and
+ *  pings the parent through onHover. */
+function Figure({
+  tint, isBack, counts, maxReps, hovered, onHover,
+}: {
+  tint: string;
+  isBack?: boolean;
+  counts: Record<string, number>;
+  maxReps: number;
+  hovered: string | null;
+  onHover(m: string | null): void;
+}) {
   const stroke = "#B6B2C4";
   const sw     = 1.2;
 
+  // Compute fill for a body part. Null muscle → neutral tint. A muscle
+  // with no recorded reps stays neutral too so untrained areas read as
+  // plain body, not as "lit".
+  function fillFor(muscle: string | null): string {
+    if (!muscle) return tint;
+    const reps = counts[muscle] ?? 0;
+    const heat = heatLevel(reps, maxReps);
+    if (heat <= 0) return tint;
+    return `rgba(216, 32, 44, ${0.18 + heat * 0.62})`;
+  }
+
+  function Part({ d, ellipse, muscle }: {
+    d?: string;
+    ellipse?: { cx: number; cy: number; rx: number; ry: number };
+    muscle: string | null;
+  }) {
+    const interactive = !!muscle;
+    const isHovered   = !!muscle && hovered === muscle;
+    const props = {
+      fill: fillFor(muscle),
+      stroke: isHovered ? "#FFFFFF" : stroke,
+      strokeWidth: isHovered ? 2.4 : sw,
+      onMouseEnter: interactive ? () => onHover(muscle!) : undefined,
+      onMouseLeave: interactive ? () => onHover(null)   : undefined,
+      style: interactive ? { cursor: "pointer" as const } : undefined,
+    };
+    if (ellipse) return <ellipse {...ellipse} {...props} />;
+    return <path d={d!} {...props} />;
+  }
+
+  // Muscle assignments per view.
+  const torsoTop = isBack ? "Traps"  : "Chest";
+  const torsoMid = isBack ? "Lats"   : "Abs";
+  const torsoBot = isBack ? "Glutes" : null;     // hips have no muscle on the front
+  const delts    = isBack ? "Rear Delts" : "Front Delts";
+  const upperArm = isBack ? "Triceps" : "Biceps";
+  const thigh    = isBack ? "Hamstrings" : "Quads";
+
   return (
-    <g
-      fill={tint}
-      stroke={stroke}
-      strokeWidth={sw}
-      strokeLinejoin="round"
-      strokeLinecap="round"
-    >
-      {/* HEAD — egg-shaped */}
-      <path d="
-        M 110 18
-        C 90 18 82 34 82 50
-        C 82 68 92 80 110 80
-        C 128 80 138 68 138 50
-        C 138 34 130 18 110 18 Z
-      " />
+    <g strokeLinejoin="round" strokeLinecap="round">
+      {/* Non-muscle parts */}
+      <Part d={HEAD_PATH} muscle={null} />
+      <Part d={NECK_PATH} muscle={null} />
 
-      {/* NECK */}
-      <path d="M 100 78 L 120 78 L 124 94 L 96 94 Z" />
+      {/* Torso bands */}
+      <Part d={CHEST_PATH} muscle={torsoTop} />
+      <Part d={ABS_PATH}   muscle={torsoMid} />
+      <Part d={HIP_PATH}   muscle={torsoBot} />
 
-      {/* TORSO — same shoulder→chest→waist→hip widths as before,
-          compressed vertically so the hip line sits at y=230. */}
-      <path d="
-        M 96 92
-        L 62 100
-        C 50 122 52 152 64 174
-        C 72 188 80 200 76 214
-        C 72 222 64 230 68 230
-        L 152 230
-        C 156 230 148 222 144 214
-        C 140 200 148 188 156 174
-        C 168 152 170 122 158 100
-        L 124 92 Z
-      " />
+      {/* Arms */}
+      <Part d={LEFT_UPPER_ARM_PATH}  muscle={upperArm} />
+      <Part d={RIGHT_UPPER_ARM_PATH} muscle={upperArm} />
+      <Part d={LEFT_FOREARM_PATH}    muscle="Forearms" />
+      <Part d={RIGHT_FOREARM_PATH}   muscle="Forearms" />
 
-      {/* LEFT UPPER ARM — shoulder → elbow */}
-      <path d="
-        M 62 102
-        C 46 112 38 138 36 168
-        C 36 192 44 204 52 200
-        C 56 186 60 168 62 144
-        C 64 124 64 110 62 102 Z
-      " />
-      {/* RIGHT UPPER ARM */}
-      <path d="
-        M 158 102
-        C 174 112 182 138 184 168
-        C 184 192 176 204 168 200
-        C 164 186 160 168 158 144
-        C 156 124 156 110 158 102 Z
-      " />
+      {/* Hands — neutral */}
+      <Part ellipse={{ cx: 48,  cy: 278, rx: 10, ry: 11 }} muscle={null} />
+      <Part ellipse={{ cx: 172, cy: 278, rx: 10, ry: 11 }} muscle={null} />
 
-      {/* LEFT FOREARM */}
-      <path d="
-        M 36 202
-        C 34 226 36 250 42 268
-        C 46 274 54 274 56 266
-        C 58 246 56 224 52 204
-        C 48 200 40 200 36 202 Z
-      " />
-      {/* RIGHT FOREARM */}
-      <path d="
-        M 184 202
-        C 186 226 184 250 178 268
-        C 174 274 166 274 164 266
-        C 162 246 164 224 168 204
-        C 172 200 180 200 184 202 Z
-      " />
+      {/* Deltoid caps — rendered after arms so the bicep tucks under */}
+      <Part d={LEFT_DELTOID_PATH}  muscle={delts} />
+      <Part d={RIGHT_DELTOID_PATH} muscle={delts} />
 
-      {/* HANDS */}
-      <ellipse cx={48} cy={278} rx={10} ry={11} />
-      <ellipse cx={172} cy={278} rx={10} ry={11} />
+      {/* Legs */}
+      <Part d={LEFT_THIGH_PATH}  muscle={thigh} />
+      <Part d={RIGHT_THIGH_PATH} muscle={thigh} />
+      <Part d={LEFT_CALF_PATH}   muscle="Calves" />
+      <Part d={RIGHT_CALF_PATH}  muscle="Calves" />
 
-      {/* LEFT DELTOID / SHOULDER CAP — slimmer than before: outer
-          reach trimmed from x=28 to x=34 (~match the bicep + 2 px) and
-          vertical extent shortened from 64 → 58 px. */}
-      <path d="
-        M 96 92
-        C 76 84 58 86 46 100
-        C 38 114 36 128 44 138
-        C 56 136 68 128 74 116
-        C 82 106 88 98 96 92 Z
-      " />
-      {/* RIGHT DELTOID / SHOULDER CAP (mirror) */}
-      <path d="
-        M 124 92
-        C 144 84 162 86 174 100
-        C 182 114 184 128 176 138
-        C 164 136 152 128 146 116
-        C 138 106 132 98 124 92 Z
-      " />
-
-      {/* LEFT THIGH — hip → knee. y=230..345 (115 px tall) */}
-      <path d="
-        M 70 230
-        C 66 264 66 304 74 345
-        L 102 345
-        C 108 304 110 264 108 230 Z
-      " />
-      {/* RIGHT THIGH */}
-      <path d="
-        M 112 230
-        C 110 264 112 304 118 345
-        L 146 345
-        C 154 304 154 264 150 230 Z
-      " />
-
-      {/* LEFT CALF — knee → ankle, taper. y=345..430 (85 px) */}
-      <path d="
-        M 76 345
-        C 72 372 74 402 80 422
-        C 84 430 92 430 96 422
-        C 102 402 100 372 100 345 Z
-      " />
-      {/* RIGHT CALF */}
-      <path d="
-        M 120 345
-        C 118 372 118 402 124 422
-        C 128 430 136 430 140 422
-        C 146 402 148 372 144 345 Z
-      " />
-
-      {/* FEET */}
-      <ellipse cx={88} cy={436} rx={14} ry={6} />
-      <ellipse cx={132} cy={436} rx={14} ry={6} />
+      {/* Feet — neutral */}
+      <Part ellipse={{ cx: 88,  cy: 436, rx: 14, ry: 6 }} muscle={null} />
+      <Part ellipse={{ cx: 132, cy: 436, rx: 14, ry: 6 }} muscle={null} />
 
       {/* SUBTLE DETAIL — front: chest centre line. back: spine. */}
       {!isBack && (
@@ -322,49 +297,10 @@ function Figure({ tint, isBack }: { tint: string; isBack?: boolean }) {
   );
 }
 
-function RegionEllipse({
-  region, heat, hovered, onEnter, onLeave,
-}: {
-  region: Region;
-  heat: number;       // 0..1
-  hovered: boolean;
-  onEnter(): void;
-  onLeave(): void;
-}) {
-  const [nx, ny, nw, nh] = region;
-  // Convert normalised coords to figure-svg coords. The body occupies
-  // BODY_TOP .. BODY_TOP + BODY_SPAN vertically; muscle regions map into
-  // that range so they land on the body, not beyond it.
-  const x  = nx * FW;
-  const y  = ny * BODY_SPAN + BODY_TOP;
-  const w  = nw * FW;
-  const h  = nh * BODY_SPAN;
-  const cx = x + w / 2;
-  const cy = y + h / 2;
-
-  const fill = heat > 0
-    ? `rgba(216, 32, 44, ${0.20 + heat * 0.55})`
-    : "rgba(216, 32, 44, 0.08)";
-  const stroke = hovered ? "#FFFFFF" : "rgba(216, 32, 44, 0.55)";
-  const strokeW = hovered ? 2.5 : 1;
-
-  return (
-    <ellipse
-      cx={cx} cy={cy} rx={w / 2} ry={h / 2}
-      fill={fill}
-      stroke={stroke}
-      strokeWidth={strokeW}
-      onMouseEnter={onEnter}
-      onMouseLeave={onLeave}
-      style={{ cursor: "pointer" }}
-    />
-  );
-}
-
 function HeatLegend() {
-  // 4-step ramp matching the alpha scale in RegionEllipse: 0.08 (no
-  // training) → 0.75 (heavily trained).
-  const stops = [0.08, 0.30, 0.55, 0.75];
+  // 4-step ramp matching the alpha scale used by Figure.fillFor():
+  // 0.18 (lowest trained) → 0.80 (heavily trained).
+  const stops = [0.18, 0.36, 0.58, 0.80];
   return (
     <div className="flex items-center gap-2 text-[10px] text-gray-dark">
       <span>Less</span>
