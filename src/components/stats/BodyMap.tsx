@@ -17,9 +17,9 @@ import {
 // BODY_TOP..BODY_TOP+BODY_SPAN vertically so they always land inside
 // the silhouette.
 const FW        = 220;
-const FH        = 500;
+const FH        = 480;
 const BODY_TOP  = 92;   // top of shoulders / torso
-const BODY_SPAN = 380;  // shoulders → ankle
+const BODY_SPAN = 358;  // shoulders → ankle (shorter torso, longer legs)
 
 export function BodyMap() {
   const [hovered, setHovered] = useState<string | null>(null);
@@ -203,19 +203,19 @@ function Figure({ tint, isBack }: { tint: string; isBack?: boolean }) {
       {/* NECK */}
       <path d="M 100 78 L 120 78 L 124 94 L 96 94 Z" />
 
-      {/* TORSO — shoulders (62→158, w=96) → waist (78→142, w=64) →
-          hips (66→154, w=88). Waist/shoulder ratio ≈ 0.67 for an athletic
-          but proportional male torso. Smooth bezier all the way. */}
+      {/* TORSO — shoulders (62→158, w=96) → chest bulge → waist
+          (76→144, w=68) → hips (68→152, w=84). Shorter overall: hip
+          line at y=250 instead of y=304. */}
       <path d="
         M 96 92
         L 62 100
-        C 52 124 54 168 64 200
-        C 70 224 76 248 78 270
-        C 80 286 74 296 66 304
-        L 154 304
-        C 146 296 140 286 142 270
-        C 144 248 150 224 156 200
-        C 166 168 168 124 158 100
+        C 50 128 52 162 64 184
+        C 72 198 80 212 76 230
+        C 72 240 64 250 68 250
+        L 152 250
+        C 156 250 148 240 144 230
+        C 140 212 148 198 156 184
+        C 168 162 170 128 158 100
         L 124 92 Z
       " />
 
@@ -257,59 +257,58 @@ function Figure({ tint, isBack }: { tint: string; isBack?: boolean }) {
       <ellipse cx={48} cy={278} rx={10} ry={11} />
       <ellipse cx={172} cy={278} rx={10} ry={11} />
 
-      {/* LEFT DELTOID / SHOULDER CAP — rendered after the arm so the
-          bicep curve tucks under. Outer edge extends past the arm so
-          the silhouette gets the widest point at the shoulder, not
-          the bicep. */}
+      {/* LEFT DELTOID / SHOULDER CAP — slimmer than before: outer
+          reach trimmed from x=28 to x=34 (~match the bicep + 2 px) and
+          vertical extent shortened from 64 → 58 px. */}
       <path d="
         M 96 92
-        C 72 82 50 84 36 102
-        C 28 118 28 134 36 146
-        C 48 146 62 138 72 124
-        C 80 112 88 100 96 92 Z
+        C 76 84 58 86 46 100
+        C 38 114 36 128 44 138
+        C 56 136 68 128 74 116
+        C 82 106 88 98 96 92 Z
       " />
       {/* RIGHT DELTOID / SHOULDER CAP (mirror) */}
       <path d="
         M 124 92
-        C 148 82 170 84 184 102
-        C 192 118 192 134 184 146
-        C 172 146 158 138 148 124
-        C 140 112 132 100 124 92 Z
+        C 144 84 162 86 174 100
+        C 182 114 184 128 176 138
+        C 164 136 152 128 146 116
+        C 138 106 132 98 124 92 Z
       " />
 
-      {/* LEFT THIGH — hip → knee */}
+      {/* LEFT THIGH — hip → knee. Now y=250..360 (110 px tall) */}
       <path d="
-        M 68 304
-        C 64 338 64 376 72 410
-        L 104 410
-        C 108 376 110 338 108 304 Z
+        M 70 250
+        C 66 286 66 322 74 360
+        L 102 360
+        C 108 322 110 286 108 250 Z
       " />
       {/* RIGHT THIGH */}
       <path d="
-        M 112 304
-        C 110 338 112 376 116 410
-        L 148 410
-        C 156 376 156 338 152 304 Z
+        M 112 250
+        C 110 286 112 322 118 360
+        L 146 360
+        C 154 322 154 286 150 250 Z
       " />
 
-      {/* LEFT CALF — taper to ankle */}
+      {/* LEFT CALF — knee → ankle, taper */}
       <path d="
-        M 74 410
-        C 70 432 72 456 78 474
-        C 82 480 92 480 96 474
-        C 102 456 100 432 98 410 Z
+        M 76 360
+        C 72 386 74 414 80 434
+        C 84 442 92 442 96 434
+        C 102 414 100 386 100 360 Z
       " />
       {/* RIGHT CALF */}
       <path d="
-        M 122 410
-        C 120 432 120 456 124 474
-        C 128 480 138 480 142 474
-        C 148 456 146 432 146 410 Z
+        M 120 360
+        C 118 386 118 414 124 434
+        C 128 442 136 442 140 434
+        C 146 414 148 386 144 360 Z
       " />
 
       {/* FEET */}
-      <ellipse cx={86} cy={486} rx={14} ry={6} />
-      <ellipse cx={134} cy={486} rx={14} ry={6} />
+      <ellipse cx={88} cy={448} rx={14} ry={6} />
+      <ellipse cx={132} cy={448} rx={14} ry={6} />
 
       {/* SUBTLE DETAIL — front: chest centre line. back: spine. */}
       {!isBack && (
