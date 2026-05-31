@@ -94,37 +94,42 @@ export function Settings() {
       )}
 
       <div className="mt-6">
-        <div className="font-bold mb-2">Tracking display</div>
-        <div className="grid grid-cols-2 gap-2">
-          {POSE_STYLES.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => set({ poseStyle: p.id })}
-              className={
-                "rounded-2xl p-3 text-left transition border " +
-                (s.poseStyle === p.id
-                  ? "bg-accent text-on_accent border-accent"
-                  : "bg-panel-dark text-ink border-border hover:bg-bg")
-              }
-            >
-              <div className="font-bold text-sm">{p.label}</div>
-              <div className={"text-xs " + (s.poseStyle === p.id ? "opacity-80" : "text-gray-dark")}>
-                {p.hint}
-              </div>
-            </button>
-          ))}
-        </div>
+        <ToggleRow
+          label="Tracking display"
+          on={s.poseStyle !== "off"}
+          onToggle={(on) => set({ poseStyle: on ? "spring" : "off" })}
+        />
+        {s.poseStyle !== "off" && (
+          <div className="grid grid-cols-2 gap-2 mt-3">
+            {POSE_STYLES.filter((p) => p.id !== "off").map((p) => (
+              <button
+                key={p.id}
+                onClick={() => set({ poseStyle: p.id })}
+                className={
+                  "rounded-2xl p-3 text-left transition border " +
+                  (s.poseStyle === p.id
+                    ? "bg-accent text-on_accent border-accent"
+                    : "bg-panel-dark text-ink border-border hover:bg-bg")
+                }
+              >
+                <div className="font-bold text-sm">{p.label}</div>
+                <div className={"text-xs " + (s.poseStyle === p.id ? "opacity-80" : "text-gray-dark")}>
+                  {p.hint}
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
-      <Group label="Trainer character">
-        <Pill selected={s.trainerEnabled}  onClick={() => set({ trainerEnabled: true })}>On</Pill>
-        <Pill selected={!s.trainerEnabled} onClick={() => set({ trainerEnabled: false })}>Off</Pill>
-      </Group>
-
-      {s.trainerEnabled && (
-        <div className="mt-6">
-          <div className="font-bold mb-2">Pick your trainer</div>
-          <div className="grid grid-cols-2 gap-3">
+      <div className="mt-6">
+        <ToggleRow
+          label="Trainer"
+          on={s.trainerEnabled}
+          onToggle={(on) => set({ trainerEnabled: on })}
+        />
+        {s.trainerEnabled && (
+          <div className="grid grid-cols-2 gap-3 mt-3">
             {TRAINERS.map((t) => (
               <button
                 key={t.name}
@@ -146,8 +151,8 @@ export function Settings() {
               </div>
             )}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       <Group label="Rest duration">
         {REST_STEPS.map((r) => (
@@ -156,6 +161,35 @@ export function Settings() {
           </Pill>
         ))}
       </Group>
+    </div>
+  );
+}
+
+// A bold section label with an on/off switch on the same row. The caller
+// shows the section's options only while `on` is true.
+function ToggleRow({ label, on, onToggle }: {
+  label: string; on: boolean; onToggle(on: boolean): void;
+}) {
+  return (
+    <div className="flex items-center justify-between">
+      <div className="font-bold">{label}</div>
+      <button
+        role="switch"
+        aria-checked={on}
+        aria-label={label}
+        onClick={() => onToggle(!on)}
+        className={
+          "relative w-11 h-6 rounded-full transition-colors " +
+          (on ? "bg-accent" : "bg-panel-dark border border-border")
+        }
+      >
+        <span
+          className={
+            "absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-panel shadow transition-transform " +
+            (on ? "translate-x-5" : "")
+          }
+        />
+      </button>
     </div>
   );
 }
