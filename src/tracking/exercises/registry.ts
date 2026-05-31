@@ -4,6 +4,7 @@ import { LM } from "../helpers";
 import type { ExerciseTracker } from "./types";
 import { createBicepCurlTracker } from "./bicepCurls";
 import { createSquatTracker } from "./squat";
+import { createOneArmTricepsTracker } from "./oneArmTriceps";
 import { createAngleTracker } from "./generic";
 
 export const TRACKED_EXERCISES = [
@@ -15,6 +16,7 @@ export const TRACKED_EXERCISES = [
   "overhead press",
   "barbell row",
   "lateral raise",
+  "one arm triceps extension",
 ] as const;
 
 /** Returns a fresh tracker for the named exercise, or null for manual. */
@@ -25,6 +27,9 @@ export function getTracker(exercise: string): ExerciseTracker | null {
 
     case "squat":
       return createSquatTracker();
+
+    case "one arm triceps extension":
+      return createOneArmTricepsTracker("right");
 
     case "push ups":
       // Watch the right elbow.

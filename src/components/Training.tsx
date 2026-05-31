@@ -6,13 +6,13 @@ import type { PoseLandmarkerResult } from "@mediapipe/tasks-vision";
 import { useCamera } from "@/hooks/useCamera";
 import { useMediapipe } from "@/hooks/useMediapipe";
 import { getTracker } from "@/tracking/exercises/registry";
-import type { ExerciseTracker } from "@/tracking/exercises/types";
+import type { ExerciseTracker, Side } from "@/tracking/exercises/types";
 import { createPoseRenderer } from "@/tracking/poseRenderer";
 import { useSessionStore } from "@/stores/sessionStore";
 import { getSettings, updateSettings } from "@/data/settings/settings";
 import { say } from "@/data/trainers/say";
 import type { LineCategory } from "@/data/trainers/trainer";
-import { repBeep, setCompleteChime } from "@/audio/sfx";
+import { repBeep, setCompleteChime, switchSideChime } from "@/audio/sfx";
 import { useTrainerStore } from "@/stores/trainerStore";
 import { BackIcon } from "@/components/icons";
 import { QuickSettings } from "@/components/QuickSettings";
@@ -27,6 +27,7 @@ const JOINT_BY_EXERCISE: Record<string, string> = {
   "squat":          "Knee",
   "deadlift":       "Hip",
   "lateral raise":  "Shoulder",
+  "one arm triceps extension": "Elbow",
 };
 
 // How long a trainer line lives in the status bar before the fallback
@@ -50,7 +51,11 @@ export function Training() {
   const poseRendererRef = useRef(createPoseRenderer());
   const [reps, setReps] = useState(0);
   const [angle, setAngle] = useState<number | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
   const [showQuickSettings, setShowQuickSettings] = useState(false);
+  // For unilateral exercises (one-arm): which arm is currently being counted.
+  // "right" first, then "left"; the set advances only after both are done.
+  const [side, setSide] = useState<Side>("right");
   const lastRepRef = useRef(0);
   const lastAngleTsRef = useRef(0);
 
@@ -66,9 +71,14 @@ export function Training() {
   }, [trainerTick, trainerText]);
 
   useEffect(() => {
-    trackerRef.current = getTracker(exercise);
+    const tk = getTracker(exercise);
+    trackerRef.current = tk;
     setReps(0);
+    setFormError(null);
     lastRepRef.current = 0;
+    // Unilateral exercises always start on the right arm.
+    setSide("right");
+    tk?.setSide?.("right");
     say("intro", exercise);
   }, [exercise]);
 
@@ -143,17 +153,33 @@ export function Training() {
     if (nowMs - lastAngleTsRef.current > 100) {
       lastAngleTsRef.current = nowMs;
       setAngle(t.angle);
+      setFormError(t.formError ?? null);
     }
     if (c !== lastRepRef.current) {
-      onRep(c, targetReps, isAmrap);
-      lastRepRef.current = c;
-      setReps(c);
-      if (!isAmrap && c >= targetReps && getSettings().autoRest) {
-        // tiny delay so the set-complete line gets a beat to play
-        setTimeout(() => advance(), 600);
+      // Unilateral: after the right arm hits target, switch to the left and
+      // keep the set open. The set only advances once both arms are done. This
+      // path plays a dedicated swap cue instead of the set-complete chime.
+      const sideSwitch =
+        !isAmrap && c >= targetReps && t.unilateral && side === "right";
+      if (sideSwitch) {
+        repBeep();          // the rep that finished the right arm still counts
+        switchSideChime();  // distinct "change arms" cue
+        t.setSide?.("left");
+        setSide("left");
+        lastRepRef.current = 0;
+        setReps(0);
+        setStatusLine("Switch to your left arm!");
+      } else {
+        onRep(c, targetReps, isAmrap);
+        lastRepRef.current = c;
+        setReps(c);
+        if (!isAmrap && c >= targetReps && getSettings().autoRest) {
+          // tiny delay so the set-complete line gets a beat to play
+          setTimeout(() => advance(), 600);
+        }
       }
     }
-  }, [targetReps, isAmrap, onRep, videoRef]);
+  }, [targetReps, isAmrap, side, onRep, videoRef]);
 
   const { ready: mpReady, error: mpError } = useMediapipe(videoRef, onResult, !!trackerRef.current);
 
@@ -173,6 +199,21 @@ export function Training() {
   }
 
   const display = trackerRef.current ? reps : targetReps;
+  const isUnilateral = trackerRef.current?.unilateral ?? false;
+
+  // Manually finish the current arm and move to the other (mirrors the
+  // automatic switch that fires when the right arm hits its rep target).
+  function switchToOtherArm() {
+    const t = trackerRef.current;
+    if (!t?.unilateral) return;
+    t.setSide?.("left");
+    setSide("left");
+    lastRepRef.current = 0;
+    setReps(0);
+    setFormError(null);
+    switchSideChime();
+    setStatusLine("Switch to your left arm!");
+  }
 
   return (
     <div className="grid grid-cols-[1fr_460px] gap-4 p-4 h-full">
@@ -227,12 +268,14 @@ export function Training() {
             <div className="font-bold text-ink truncate">
               {statusLine || titleCase(exercise)}
             </div>
-            <div className="text-sm text-gray-dark truncate">
-              {angle != null
-                ? `${JOINT_BY_EXERCISE[exercise] ?? "Joint"} at ${Math.round(angle)}° — keep it tight`
-                : trackerRef.current
-                  ? "Move into frame so I can see you"
-                  : "Manual mode — tap Set complete when done"}
+            <div className={"text-sm truncate " + (formError ? "text-accent font-semibold" : "text-gray-dark")}>
+              {formError
+                ? `⚠ ${formError}`
+                : angle != null
+                  ? `${JOINT_BY_EXERCISE[exercise] ?? "Joint"} at ${Math.round(angle)}° — keep it tight`
+                  : trackerRef.current
+                    ? "Move into frame so I can see you"
+                    : "Manual mode — tap Set complete when done"}
             </div>
           </div>
           {angle != null && (
@@ -269,6 +312,7 @@ export function Training() {
         {/* Reps */}
         <div className="bg-accent rounded-3xl p-5 text-on_accent">
           <div className="text-xs font-bold tracking-widest opacity-80">
+            {isUnilateral ? (side === "right" ? "RIGHT ARM · " : "LEFT ARM · ") : ""}
             {isAmrap ? "AMRAP · REPS DONE" : "REPS DONE"}
           </div>
           <div className="flex items-baseline">
@@ -319,13 +363,24 @@ export function Training() {
           onPlus ={() => updateSettings({ restSeconds: Math.min(600, getSettings().restSeconds + 15) })}
         />
 
-        {/* Done button — dark ink fill with white text, matching legacy */}
-        <button
-          onClick={advance}
-          className="mt-auto bg-nav text-white font-bold py-4 rounded-2xl text-lg hover:bg-ink transition flex items-center justify-center gap-3"
-        >
-          <span className="text-xl">✓</span> Set complete!
-        </button>
+        {/* Done button — dark ink fill with white text, matching legacy.
+            For unilateral exercises on the first (right) arm it becomes a
+            manual "Switch arm" control so the set isn't ended early. */}
+        {isUnilateral && side === "right" ? (
+          <button
+            onClick={switchToOtherArm}
+            className="mt-auto bg-nav text-white font-bold py-4 rounded-2xl text-lg hover:bg-ink transition flex items-center justify-center gap-3"
+          >
+            <span className="text-xl">⇄</span> Switch arm
+          </button>
+        ) : (
+          <button
+            onClick={advance}
+            className="mt-auto bg-nav text-white font-bold py-4 rounded-2xl text-lg hover:bg-ink transition flex items-center justify-center gap-3"
+          >
+            <span className="text-xl">✓</span> Set complete!
+          </button>
+        )}
       </div>
 
       {showQuickSettings && (

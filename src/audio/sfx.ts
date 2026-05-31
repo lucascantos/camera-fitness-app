@@ -72,6 +72,29 @@ export function setCompleteChime(): void {
   });
 }
 
+/**
+ * Distinct two-note "swap" cue for unilateral exercises — played when the
+ * user should switch to the other arm. Descending (unlike the ascending
+ * set-complete chime) so it reads as "change", not "done".
+ */
+export function switchSideChime(): void {
+  const v = sfxVol(); if (v <= 0) return;
+  const c = getCtx();  if (!c) return;
+  const notes = [880, 587.33]; // A5 → D5, descending
+  notes.forEach((freq, i) => {
+    const osc  = c.createOscillator();
+    const gain = c.createGain();
+    osc.connect(gain).connect(c.destination);
+    osc.type            = "triangle";
+    osc.frequency.value = freq;
+    const t0 = c.currentTime + i * 0.12;
+    gain.gain.setValueAtTime(v * 0.22, t0);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.26);
+    osc.start(t0);
+    osc.stop(t0 + 0.28);
+  });
+}
+
 /** Short "tick" used in the rest countdown's final seconds. */
 export function restTick(): void {
   const v = sfxVol(); if (v <= 0) return;
