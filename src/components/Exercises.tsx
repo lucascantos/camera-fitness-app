@@ -14,7 +14,7 @@ import {
   type MuscleGroup,
 } from "@/data/exercises/catalog";
 import { TRACKED_EXERCISES } from "@/tracking/exercises/registry";
-import { bestSetFor, formatBest, type BestSet } from "@/data/athlete/bestSet";
+import { bestSetFor, lastSetFor, formatBest, type BestSet } from "@/data/athlete/bestSet";
 import { favoriteCount, isFavorite, toggleFavorite } from "@/data/settings/favorites";
 import { makeSession } from "@/data/plans/plans";
 import { useSessionStore } from "@/stores/sessionStore";
@@ -82,7 +82,13 @@ export function Exercises() {
   }, [enriched, query, muscle, equip, sortMode]);
 
   const startOne = (name: string) => {
-    const s = makeSession(1, [[name, [[10, 0, false]]]]);
+    // Standalone start (not a plan with progression): pre-fill the set with the
+    // weight/reps the athlete last logged for this exercise, falling back to a
+    // sensible 10-rep / bodyweight default if there's no history.
+    const last = lastSetFor(name);
+    const reps = last?.reps ?? 10;
+    const weight = last?.weight ?? 0;
+    const s = makeSession(1, [[name, [[reps, weight, false]]]]);
     startSession(s);
   };
 

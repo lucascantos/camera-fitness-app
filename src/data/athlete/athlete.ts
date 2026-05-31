@@ -59,6 +59,26 @@ export async function saveAthlete(): Promise<void> {
   await kvSet("athlete", _athlete);
 }
 
+/**
+ * Replace a single history entry (edited by the user on the History tab) and
+ * persist. Indices are positions in the chronological `history` array.
+ */
+export async function updateHistoryEntry(
+  index: number,
+  entry: HistoryEntry,
+): Promise<void> {
+  if (index < 0 || index >= _athlete.history.length) return;
+  _athlete.history[index] = entry;
+  await saveAthlete();
+}
+
+/** Remove a history entry entirely and persist. */
+export async function deleteHistoryEntry(index: number): Promise<void> {
+  if (index < 0 || index >= _athlete.history.length) return;
+  _athlete.history.splice(index, 1);
+  await saveAthlete();
+}
+
 export async function awardSession(
   sessionId: string,
   exercises: HistoryExercise[],

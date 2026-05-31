@@ -2,13 +2,15 @@
 
 import { useState } from "react";
 import { Progress } from "./stats/Progress";
+import { History }  from "./stats/History";
 import { BodyMap }  from "./stats/BodyMap";
 import { Body }     from "./stats/Body";
 
-type StatsTab = "progress" | "bodymap" | "body";
+type StatsTab = "progress" | "history" | "bodymap" | "body";
 
 const TABS: { id: StatsTab; label: string }[] = [
   { id: "progress", label: "Progress" },
+  { id: "history",  label: "History"  },
   { id: "bodymap",  label: "Body Map" },
   { id: "body",     label: "Body"     },
 ];
@@ -40,6 +42,7 @@ export function Stats() {
       </div>
       <div className="mt-5">
         {tab === "progress" && <Progress />}
+        {tab === "history"  && <History  />}
         {tab === "bodymap"  && <BodyMap  />}
         {tab === "body"     && <Body     />}
       </div>
