@@ -15,12 +15,12 @@
 import type { Landmark } from "./helpers";
 import { POSE_CONNECTIONS } from "./drawPose";
 
-export type PoseStyle = "skeleton" | "spring" | "blob";
+export type PoseStyle = "spring" | "blob" | "off";
 
 export const POSE_STYLES: { id: PoseStyle; label: string; hint: string }[] = [
-  { id: "skeleton", label: "Stick figure", hint: "Crisp lines + dots" },
-  { id: "spring",   label: "Spring",       hint: "Springy, smoothed follow" },
-  { id: "blob",     label: "Aura",         hint: "Soft glow with a motion trail" },
+  { id: "spring", label: "Lines", hint: "Smoothed body lines" },
+  { id: "blob",   label: "Aura",  hint: "Soft glow with a motion trail" },
+  { id: "off",    label: "Off",   hint: "Hide the overlay" },
 ];
 
 const COLOR = "#00E07A";
@@ -28,9 +28,9 @@ const MIN_VISIBILITY = 0.5;
 
 // Which smoothing each style uses.
 const SMOOTHING: Record<PoseStyle, "none" | "spring"> = {
-  skeleton: "none",
   spring: "spring",
   blob: "none", // leading edge tracks raw; the trail comes from canvas fade
+  off: "none",
 };
 
 // Aura: fraction of the previous frame erased each tick. Lower = longer trail.
@@ -111,6 +111,11 @@ export function createPoseRenderer(): PoseRenderer {
     h: number,
     style: PoseStyle,
   ) {
+    // Off: clear and draw nothing.
+    if (style === "off") {
+      ctx.clearRect(0, 0, w, h);
+      return;
+    }
     const pts = smooth(landmarks, style);
     // Aura manages its own clearing (a partial fade) to leave a trail; every
     // other style starts from a clean canvas each frame.

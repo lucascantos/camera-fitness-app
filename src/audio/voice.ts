@@ -29,7 +29,7 @@ export async function playVoice(url: string | null): Promise<void> {
     cache.set(url, audio);
   }
   audio.currentTime = 0;
-  audio.volume = Math.max(0, Math.min(1, s.voiceVol));
+  audio.volume = Math.max(0, Math.min(1, s.masterVol * s.voiceVol));
   current = audio;
   try {
     await audio.play();

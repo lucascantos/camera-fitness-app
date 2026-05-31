@@ -23,7 +23,7 @@ function ensure(): HTMLAudioElement | null {
 export async function startMusic(): Promise<void> {
   const a = ensure(); if (!a) return;
   const s = getSettings();
-  a.volume = Math.max(0, Math.min(1, s.musicVol));
+  a.volume = Math.max(0, Math.min(1, s.masterVol * s.musicVol));
   if (started && !a.paused) return;
   try {
     await a.play();
@@ -42,5 +42,8 @@ export function stopMusic(): void {
 
 /** Apply current settings.musicVol to the running track, if any. */
 export function applyMusicVolume(): void {
-  if (el) el.volume = Math.max(0, Math.min(1, getSettings().musicVol));
+  if (el) {
+    const s = getSettings();
+    el.volume = Math.max(0, Math.min(1, s.masterVol * s.musicVol));
+  }
 }

@@ -12,7 +12,10 @@ import { TrainerAvatar } from "@/components/trainer/TrainerAvatar";
 import { POSE_STYLES } from "@/tracking/poseRenderer";
 import { getGpuStatus } from "@/tracking/gpuStatus";
 
-const THEMES: Theme[] = ["fitpop", "light", "dark"];
+const THEMES: { id: Theme; label: string }[] = [
+  { id: "fitpop", label: "Light" },
+  { id: "dark", label: "Dark" },
+];
 const WEIGHT_STEPS = [0.5, 1.0, 2.5, 5.0];
 const REST_STEPS = [30, 60, 90, 120, 180];
 
@@ -57,8 +60,8 @@ export function Settings() {
 
       <Group label="Theme">
         {THEMES.map((t) => (
-          <Pill key={t} selected={s.theme === t} onClick={() => set({ theme: t })}>
-            {t[0].toUpperCase() + t.slice(1)}
+          <Pill key={t.id} selected={s.theme === t.id} onClick={() => set({ theme: t.id })}>
+            {t.label}
           </Pill>
         ))}
       </Group>

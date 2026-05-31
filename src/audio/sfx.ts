@@ -33,7 +33,8 @@ export function unlockAudio(): void {
 }
 
 function sfxVol(): number {
-  return Math.max(0, Math.min(1, getSettings().sfxVol));
+  const s = getSettings();
+  return Math.max(0, Math.min(1, s.masterVol * s.sfxVol));
 }
 
 /** Short tone that fires once per counted rep. */

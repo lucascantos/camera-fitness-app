@@ -2,11 +2,49 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Palette as RGB channels so Tailwind opacity modifiers (bg-ink/50 etc.)
+   keep working: tailwind.config.js maps each token to
+   rgb(var(--token) / <alpha-value>). Switching the theme just swaps these
+   variable values via the .dark class on <html>. */
+:root {
+  --bg: 240 240 245;
+  --panel: 255 255 255;
+  --panel-dark: 237 236 242;
+  --accent: 216 32 44;
+  --accent-hov: 184 26 36;
+  --border: 226 224 234;
+  --gray: 138 138 160;
+  --gray-dark: 108 104 144;
+  --ink: 26 19 48;
+  --on_accent: 255 255 255;
+  --coin: 242 184 75;
+  --coin-dim: 164 122 42;
+  --good: 63 179 107;
+  --nav: 26 19 48;
+}
+
+.dark {
+  --bg: 18 16 27;
+  --panel: 31 27 46;
+  --panel-dark: 42 37 64;
+  --accent: 224 50 62;
+  --accent-hov: 240 76 88;
+  --border: 51 46 71;
+  --gray: 124 120 148;
+  --gray-dark: 167 162 196;
+  --ink: 242 240 248;
+  --on_accent: 255 255 255;
+  --coin: 242 184 75;
+  --coin-dim: 240 198 102;
+  --good: 76 203 124;
+  --nav: 67 61 110;
+}
+
 html, body, #root {
   height: 100%;
   margin: 0;
-  background: #F0F0F5;
-  color: #1A1330;
+  background: rgb(var(--bg));
+  color: rgb(var(--ink));
   font-family: 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   user-select: none;

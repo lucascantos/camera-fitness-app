@@ -4,22 +4,22 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Default ("fitpop") theme — red on near-white, matching the
-        // legacy pygame app's primary palette.
-        bg:           "#F0F0F5",   // page background
-        panel:        "#FFFFFF",   // card surface
-        "panel-dark": "#EDECF2",   // inset tile inside a card
-        accent:       "#D8202C",   // primary red
-        "accent-hov": "#B81A24",
-        border:       "#E2E0EA",
-        gray:         "#8A8AA0",
-        "gray-dark":  "#6C6890",
-        ink:          "#1A1330",   // primary text
-        on_accent:    "#FFFFFF",
-        coin:         "#F2B84B",
-        "coin-dim":   "#A47A2A",
-        good:         "#3FB36B",
-        nav:          "#1A1330",   // active nav pill background
+        // Tokens resolve to CSS variables defined in src/index.css, so the
+        // active theme (default "fitpop" or ".dark") swaps the whole palette.
+        bg:           "rgb(var(--bg) / <alpha-value>)",          // page background
+        panel:        "rgb(var(--panel) / <alpha-value>)",       // card surface
+        "panel-dark": "rgb(var(--panel-dark) / <alpha-value>)",  // inset tile inside a card
+        accent:       "rgb(var(--accent) / <alpha-value>)",      // primary red
+        "accent-hov": "rgb(var(--accent-hov) / <alpha-value>)",
+        border:       "rgb(var(--border) / <alpha-value>)",
+        gray:         "rgb(var(--gray) / <alpha-value>)",
+        "gray-dark":  "rgb(var(--gray-dark) / <alpha-value>)",
+        ink:          "rgb(var(--ink) / <alpha-value>)",         // primary text
+        on_accent:    "rgb(var(--on_accent) / <alpha-value>)",
+        coin:         "rgb(var(--coin) / <alpha-value>)",
+        "coin-dim":   "rgb(var(--coin-dim) / <alpha-value>)",
+        good:         "rgb(var(--good) / <alpha-value>)",
+        nav:          "rgb(var(--nav) / <alpha-value>)",         // active nav pill background
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],

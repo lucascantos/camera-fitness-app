@@ -15,6 +15,7 @@ import type { LineCategory } from "@/data/trainers/trainer";
 import { repBeep, setCompleteChime } from "@/audio/sfx";
 import { useTrainerStore } from "@/stores/trainerStore";
 import { BackIcon } from "@/components/icons";
+import { QuickSettings } from "@/components/QuickSettings";
 
 // Joint label per exercise — drives the status-bar sub line.
 const JOINT_BY_EXERCISE: Record<string, string> = {
@@ -49,6 +50,7 @@ export function Training() {
   const poseRendererRef = useRef(createPoseRenderer());
   const [reps, setReps] = useState(0);
   const [angle, setAngle] = useState<number | null>(null);
+  const [showQuickSettings, setShowQuickSettings] = useState(false);
   const lastRepRef = useRef(0);
   const lastAngleTsRef = useRef(0);
 
@@ -256,9 +258,9 @@ export function Training() {
             <div className="text-lg font-bold truncate">{titleCase(exercise)}</div>
           </div>
           <button
-            onClick={() => goTo("settings")}
+            onClick={() => setShowQuickSettings(true)}
             className="w-10 h-10 rounded-xl bg-panel border border-border grid place-items-center text-gray-dark hover:bg-panel-dark transition"
-            title="Settings"
+            title="Quick settings"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
           </button>
@@ -326,6 +328,9 @@ export function Training() {
         </button>
       </div>
 
+      {showQuickSettings && (
+        <QuickSettings onClose={() => setShowQuickSettings(false)} />
+      )}
     </div>
   );
 }
