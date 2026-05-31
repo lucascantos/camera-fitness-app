@@ -2,6 +2,7 @@
 // Settings persisted to IndexedDB under key "settings".
 
 import { kvGet, kvSet } from "@/data/db";
+import { POSE_STYLES, type PoseStyle } from "@/tracking/poseRenderer";
 
 export type Theme = "fitpop" | "light" | "dark";
 
@@ -16,6 +17,8 @@ export interface Settings {
   weightStep: number;
   favoriteExercises: string[];
   trainerEnabled: boolean;
+  // Pose overlay display style (skeleton / smooth / spring / aura / polygons).
+  poseStyle: PoseStyle;
   // ── Profile (used by Body tab and the top-nav avatar) ──
   name: string;
   initials: string;
@@ -33,6 +36,7 @@ const DEFAULTS: Settings = {
   weightStep: 1.0,
   favoriteExercises: [],
   trainerEnabled: true,
+  poseStyle: "skeleton",
   name: "",
   initials: "ME",
   heightCm: 0,
@@ -43,6 +47,10 @@ let _settings: Settings = { ...DEFAULTS };
 export async function loadSettings(): Promise<Settings> {
   const stored = await kvGet<Partial<Settings>>("settings");
   if (stored) _settings = { ...DEFAULTS, ...stored };
+  // Reset removed/unknown pose styles (e.g. an old "lerp"/"polygons" value).
+  if (!POSE_STYLES.some((p) => p.id === _settings.poseStyle)) {
+    _settings.poseStyle = DEFAULTS.poseStyle;
+  }
   return _settings;
 }
 

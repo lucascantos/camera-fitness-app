@@ -7,7 +7,7 @@ import { useCamera } from "@/hooks/useCamera";
 import { useMediapipe } from "@/hooks/useMediapipe";
 import { getTracker } from "@/tracking/exercises/registry";
 import type { ExerciseTracker } from "@/tracking/exercises/types";
-import { drawPose } from "@/tracking/drawPose";
+import { createPoseRenderer } from "@/tracking/poseRenderer";
 import { useSessionStore } from "@/stores/sessionStore";
 import { getSettings, updateSettings } from "@/data/settings/settings";
 import { say } from "@/data/trainers/say";
@@ -46,9 +46,11 @@ export function Training() {
   // Tracker — re-create on exercise change.
   const trackerRef = useRef<ExerciseTracker | null>(null);
   const canvasRef  = useRef<HTMLCanvasElement | null>(null);
+  const poseRendererRef = useRef(createPoseRenderer());
   const [reps, setReps] = useState(0);
   const [angle, setAngle] = useState<number | null>(null);
   const lastRepRef = useRef(0);
+  const lastAngleTsRef = useRef(0);
 
   // Live trainer line — fades back to the exercise name after TTL.
   const trainerText = useTrainerStore((s) => s.text);
@@ -122,7 +124,7 @@ export function Training() {
       }));
 
       const ctx = canvas.getContext("2d");
-      if (ctx) drawPose(ctx, mapped, cw, ch);
+      if (ctx) poseRendererRef.current.draw(ctx, mapped, cw, ch, getSettings().poseStyle);
     } else if (canvas && !screenLms) {
       const ctx = canvas.getContext("2d");
       ctx?.clearRect(0, 0, canvas.width, canvas.height);
@@ -132,7 +134,14 @@ export function Training() {
     const t = trackerRef.current;
     if (!t || !screenLms) return;
     const c = t.feed(screenLms, worldLms);
-    setAngle(t.angle);
+    // Throttle angle state updates to ~10fps — the overlay is drawn directly
+    // on the canvas, so this only governs the status-bar number and keeps
+    // per-frame React re-renders from competing with inference.
+    const nowMs = performance.now();
+    if (nowMs - lastAngleTsRef.current > 100) {
+      lastAngleTsRef.current = nowMs;
+      setAngle(t.angle);
+    }
     if (c !== lastRepRef.current) {
       onRep(c, targetReps, isAmrap);
       lastRepRef.current = c;

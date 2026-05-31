@@ -9,6 +9,8 @@ import { playVoice } from "@/audio/voice";
 import { say, setTrainer } from "@/data/trainers/say";
 import { TRAINERS } from "@/data/trainers";
 import { TrainerAvatar } from "@/components/trainer/TrainerAvatar";
+import { POSE_STYLES } from "@/tracking/poseRenderer";
+import { getGpuStatus } from "@/tracking/gpuStatus";
 
 const THEMES: Theme[] = ["fitpop", "light", "dark"];
 const WEIGHT_STEPS = [0.5, 1.0, 2.5, 5.0];
@@ -17,6 +19,7 @@ const REST_STEPS = [30, 60, 90, 120, 180];
 export function Settings() {
   const [, force] = useState({});
   const s = getSettings();
+  const gpu = getGpuStatus();
   const set = async (patch: Parameters<typeof updateSettings>[0]) => {
     await updateSettings(patch);
     force({});
@@ -67,6 +70,48 @@ export function Settings() {
           </Pill>
         ))}
       </Group>
+
+      {!gpu.hardwareAccelerated && (
+        <div className="mt-6 rounded-2xl border border-coin bg-coin/10 p-4 flex gap-3">
+          <div className="text-coin-dim text-xl leading-none shrink-0">⚠</div>
+          <div className="text-sm">
+            <div className="font-bold text-ink">Pose tracking is running on the CPU</div>
+            <p className="text-gray-dark mt-1">
+              {gpu.webglAvailable
+                ? "Your browser is using a software renderer, so camera tracking will be slow and choppy."
+                : "WebGL isn’t available, so the pose model can’t use the GPU and tracking will be slow."}
+              {" "}Turn on <span className="font-semibold">“Use graphics acceleration when available”</span> in
+              your browser settings and relaunch.
+            </p>
+            {gpu.renderer && (
+              <p className="text-xs text-gray mt-1">Renderer: {gpu.renderer}</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div className="mt-6">
+        <div className="font-bold mb-2">Tracking display</div>
+        <div className="grid grid-cols-2 gap-2">
+          {POSE_STYLES.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => set({ poseStyle: p.id })}
+              className={
+                "rounded-2xl p-3 text-left transition border " +
+                (s.poseStyle === p.id
+                  ? "bg-accent text-on_accent border-accent"
+                  : "bg-panel-dark text-ink border-border hover:bg-bg")
+              }
+            >
+              <div className="font-bold text-sm">{p.label}</div>
+              <div className={"text-xs " + (s.poseStyle === p.id ? "opacity-80" : "text-gray-dark")}>
+                {p.hint}
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
 
       <Group label="Trainer character">
         <Pill selected={s.trainerEnabled}  onClick={() => set({ trainerEnabled: true })}>On</Pill>
