@@ -1,8 +1,9 @@
 // Ported from: scenes/settings_overlay.py (legacy FitnessApp repo)
 // Rendered as a full page here instead of an overlay.
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { getSettings, updateSettings, type Theme } from "@/data/settings/settings";
+import { exportDataToFile, importDataFromText } from "@/data/transfer";
 import { applyMusicVolume } from "@/audio/music";
 import { repBeep, setCompleteChime } from "@/audio/sfx";
 import { playVoice } from "@/audio/voice";
@@ -161,6 +162,77 @@ export function Settings() {
           </Pill>
         ))}
       </Group>
+
+      <DataSection />
+    </div>
+  );
+}
+
+// Export/import the full app database as a JSON file. Import replaces all data
+// and reloads so the in-memory store caches rehydrate from the restored DB.
+function DataSection() {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [status, setStatus] = useState<{ kind: "ok" | "err"; msg: string } | null>(null);
+
+  async function onExport() {
+    try {
+      await exportDataToFile();
+      setStatus({ kind: "ok", msg: "Backup downloaded." });
+    } catch {
+      setStatus({ kind: "err", msg: "Couldn't create the backup." });
+    }
+  }
+
+  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-selecting the same file later
+    if (!file) return;
+    if (!window.confirm(
+      "Importing will replace ALL current data (plans, history, settings) with " +
+      "the contents of this file. This can't be undone. Continue?"
+    )) return;
+    try {
+      await importDataFromText(await file.text());
+      setStatus({ kind: "ok", msg: "Data imported — reloading…" });
+      setTimeout(() => window.location.reload(), 600);
+    } catch (err) {
+      setStatus({ kind: "err", msg: err instanceof Error ? err.message : "Import failed." });
+    }
+  }
+
+  return (
+    <div className="mt-8 border-t border-border pt-6">
+      <div className="font-bold mb-1">Data</div>
+      <p className="text-sm text-gray-dark mb-3">
+        Your data lives only in this browser. Export a backup to save it or move
+        it to another device, then import it here.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <button
+          onClick={onExport}
+          className="px-4 py-2 rounded-2xl text-sm font-semibold bg-accent text-on_accent hover:bg-accent-hov transition"
+        >
+          Export data
+        </button>
+        <button
+          onClick={() => fileRef.current?.click()}
+          className="px-4 py-2 rounded-2xl text-sm font-semibold bg-panel-dark text-ink border border-border hover:bg-bg transition"
+        >
+          Import data
+        </button>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="application/json,.json"
+          onChange={onFile}
+          className="hidden"
+        />
+      </div>
+      {status && (
+        <div className={"text-sm mt-3 " + (status.kind === "ok" ? "text-good" : "text-accent")}>
+          {status.msg}
+        </div>
+      )}
     </div>
   );
 }
