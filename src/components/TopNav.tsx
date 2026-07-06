@@ -2,6 +2,7 @@
 // Logo (left) · pill-shaped tab group (center) · avatar + settings (right).
 
 import { useSessionStore, type SceneName } from "@/stores/sessionStore";
+import { SaveLoadBar } from "@/components/SaveLoadBar";
 
 const TABS: { name: SceneName; label: string }[] = [
   { name: "home",      label: "Home"      },
@@ -19,10 +20,13 @@ export function TopNav({ initials = "ME" }: Props) {
   const { scene, goTo } = useSessionStore();
   return (
     <nav className="flex items-center justify-between px-8 py-5 bg-bg">
-      {/* Logo */}
-      <div className="flex items-center">
-        <span className="text-xl font-extrabold tracking-tight text-accent">CAMERA</span>
-        <span className="text-xl font-extrabold tracking-tight text-ink ml-1">FITNESS</span>
+      {/* Logo + Save/Load data controls */}
+      <div className="flex items-center gap-5">
+        <div className="flex items-center">
+          <span className="text-xl font-extrabold tracking-tight text-accent">CAMERA</span>
+          <span className="text-xl font-extrabold tracking-tight text-ink ml-1">FITNESS</span>
+        </div>
+        <SaveLoadBar />
       </div>
 
       {/* Tab pill group */}
