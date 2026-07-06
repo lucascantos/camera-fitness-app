@@ -11,6 +11,7 @@ import { Plans }             from "@/components/Plans";
 import { Exercises }         from "@/components/Exercises";
 import { Training }          from "@/components/Training";
 import { Rest }              from "@/components/Rest";
+import { NextExercise }      from "@/components/NextExercise";
 import { Complete }          from "@/components/Complete";
 import { Stats }             from "@/components/Stats";
 import { Settings }          from "@/components/Settings";
@@ -54,7 +55,8 @@ export default function App() {
 
   // Scenes that hide TopNav (full-screen workout flow).
   const fullscreen =
-    scene === "training" || scene === "rest" || scene === "complete";
+    scene === "training" || scene === "rest" ||
+    scene === "transition" || scene === "complete";
 
   return (
     <div className="h-full flex flex-col bg-bg">
@@ -64,8 +66,9 @@ export default function App() {
         {scene === "plans"     && <Plans     />}
         {scene === "exercises" && <Exercises />}
         {scene === "training"  && <Training  />}
-        {scene === "rest"      && <Rest      />}
-        {scene === "complete"  && <Complete  />}
+        {scene === "rest"        && <Rest         />}
+        {scene === "transition"  && <NextExercise />}
+        {scene === "complete"    && <Complete     />}
         {scene === "stats"     && <Stats     />}
         {scene === "settings"  && <Settings  />}
       </main>

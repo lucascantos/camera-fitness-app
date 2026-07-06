@@ -10,6 +10,7 @@ export type SceneName =
   | "settings"
   | "training"
   | "rest"
+  | "transition"
   | "complete";
 
 interface SessionState {

@@ -191,8 +191,11 @@ export function Training() {
       setCursor(workoutIdx, setIdx + 1);
       goTo("rest");
     } else if (workoutIdx + 1 < totalEx) {
+      // Finished every set of this exercise — move the cursor to the next
+      // exercise and show the transition screen (next-up + remaining list)
+      // instead of a bare rest timer.
       setCursor(workoutIdx + 1, 0);
-      goTo("rest");
+      goTo("transition");
     } else {
       goTo("complete");
     }
@@ -429,8 +432,20 @@ function mutateSet(
   wi: number, si: number, col: 0 | 1, fn: (v: number | boolean) => number,
 ) {
   if (!session) return;
-  const s = session.workouts[wi].sets[si];
-  s[col] = fn(s[col] as number) as never;
+  const sets = session.workouts[wi].sets;
+  const prev = sets[si][col] as number;
+  const next = fn(prev);
+  sets[si][col] = next as never;
+  // Weight changes carry forward to later sets that shared this set's previous
+  // load, so dialing in the weight on set 1 of a same-weight scheme (e.g. a
+  // linear 3×10 that started at bodyweight) applies to every following set
+  // instead of leaving them at the old value. Sets that intentionally differ
+  // (5/3/1's 65/75/85 %, BBB back-off sets) keep their own weights.
+  if (col === 1) {
+    for (let i = si + 1; i < sets.length; i++) {
+      if ((sets[i][col] as number) === prev) sets[i][col] = next as never;
+    }
+  }
   // Force a re-render via store mutation.
   useSessionStore.setState({ session: { ...session } });
 }
