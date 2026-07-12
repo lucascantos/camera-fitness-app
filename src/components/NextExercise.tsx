@@ -86,8 +86,11 @@ export function NextExercise() {
 
 function setsSummary(sets: SessionSet[]): string {
   const n = sets.length;
-  const reps = sets[0]?.[0];
-  return reps != null ? `${n} × ${reps} reps` : `${n} sets`;
+  const first = sets[0];
+  if (!first) return `${n} sets`;
+  const [reps, weight] = first;
+  const load = weight > 0 ? `${weight} kg` : "bodyweight";
+  return `${n} × ${reps} reps · ${load}`;
 }
 
 function titleCase(s: string) {
