@@ -72,6 +72,20 @@ export async function updateHistoryEntry(
   await saveAthlete();
 }
 
+/**
+ * Insert a manually-added history entry, keeping `history` sorted ascending by
+ * date so the newest-first list (and index-based editing) stays correct.
+ * Returns the index it was inserted at.
+ */
+export async function addHistoryEntry(entry: HistoryEntry): Promise<number> {
+  const h = _athlete.history;
+  let i = h.length;
+  while (i > 0 && h[i - 1].date > entry.date) i--;
+  h.splice(i, 0, entry);
+  await saveAthlete();
+  return i;
+}
+
 /** Remove a history entry entirely and persist. */
 export async function deleteHistoryEntry(index: number): Promise<void> {
   if (index < 0 || index >= _athlete.history.length) return;
