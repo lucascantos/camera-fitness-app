@@ -2,6 +2,11 @@
 
 A browser-based fitness coach that uses your webcam to count reps, run a structured workout plan, and track your progress over time. Wii-Fit-style guidance, no install, no account, no server.
 
+## Disclaimer
+
+No image is saved, no data is stored!
+Everything stays in your browser, so there is no data tracking whatsoever.
+
 ## Status
 
 🚧 In development. See [`CLAUDE.md`](./CLAUDE.md) for the architecture map and the migration plan.
