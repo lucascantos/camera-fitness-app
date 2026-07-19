@@ -4,8 +4,9 @@ A browser-based fitness coach that uses your webcam to count reps, run a structu
 
 ## Disclaimer
 
-No image is saved, no data is stored!
+**No image is saved, no data is stored!**
 Everything stays in your browser, so there is no data tracking whatsoever.
+
 
 ## Status
 
