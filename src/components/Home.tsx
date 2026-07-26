@@ -1,7 +1,11 @@
 // Ported from: scenes/home.py (legacy FitnessApp repo)
-// Home dashboard. Layout matches the legacy "fitpop" red/white screenshot:
-//   left column   — date row, big day label, week dots, hero card with Start
-//   right column  — Quick Start (least-trained scoring), Last Session
+//
+// Home screen, rebuilt mobile-first as a single scrolling column:
+//   week strip → date + day label → hero "today's workout" card with Start
+//   → Quick Start (least-trained scoring) → Last Session
+//
+// The previous 2/3-column desktop dashboard is gone; on wide screens this
+// column simply centres and stops growing. Navigation lives in BottomNav.
 
 import { useEffect, useMemo, useState } from "react";
 import { getAthlete } from "@/data/athlete/athlete";
@@ -17,7 +21,6 @@ import {
 import { getStrategy } from "@/data/progressions";
 import { useSessionStore } from "@/stores/sessionStore";
 import { PlayIcon } from "@/components/icons";
-import { TrainerPanel } from "@/components/trainer/TrainerPanel";
 
 // ---------------------------------------------------------------------------
 // Constants — exercise → primary muscles, used by the least-trained scoring.
@@ -145,7 +148,7 @@ function resolveDayIndex(plan: Plan): number {
 // ---------------------------------------------------------------------------
 
 export function Home() {
-  const { startSession, goTo } = useSessionStore();
+  const { startSession, goTo, session } = useSessionStore();
 
   const [activePlan, setActivePlan] = useState<Plan>(resolveActivePlan);
   const [dayIdx,     setDayIdx]     = useState<number>(() => resolveDayIndex(resolveActivePlan()));
@@ -194,104 +197,89 @@ export function Home() {
     : "No active plan";
 
   // ────────────────────────────────────────────────────────────────────────
-  // Render
+  // Render — single mobile-first column. On desktop it simply centres and
+  // stops growing rather than fanning back out into a dashboard.
   // ────────────────────────────────────────────────────────────────────────
-  const trainerOn = getSettings().trainerEnabled;
-  // 3-column when the trainer is on: [character | hero | sidebar]
-  // 2-column when off so Today's Workout reclaims the negative space.
-  // Mobile: everything stacks in one scrolling column. lg+: the original
-  // multi-column dashboard pinned to viewport height.
-  const gridCls = trainerOn
-    ? "flex flex-col gap-4 px-4 pb-4 lg:grid lg:grid-cols-[260px_1fr_320px] lg:gap-6 lg:px-8 lg:pb-8 lg:h-full"
-    : "flex flex-col gap-4 px-4 pb-4 lg:grid lg:grid-cols-[1fr_320px] lg:gap-6 lg:px-8 lg:pb-8 lg:h-full";
-
   return (
-    <div className={gridCls}>
-      {/* ── Trainer column (collapses when disabled) ──────────────────── */}
-      {trainerOn && (
-        <TrainerPanel initialLine="greeting" characterHeight={340} />
+    <div className="flex flex-col gap-5 px-4 pb-4 max-w-lg mx-auto w-full">
+      {/* Week strip — full width, one cell per weekday */}
+      <WeekStrip todayIdx={todayMonIdx} completed={completedDays} />
+
+      {/* Date + day name */}
+      <div>
+        <div className="text-[11px] font-bold tracking-widest text-gray-dark">
+          {dateHeader}
+        </div>
+        <h1 className="text-4xl font-extrabold text-ink leading-none mt-1.5">
+          {dayLabel}
+        </h1>
+      </div>
+
+      {/* Continue active session (only while one is open) */}
+      <ContinueCard />
+
+      {/* Hero workout card — hidden while a session is in progress, so the
+          screen offers one obvious next action (Continue) instead of two
+          competing ones. */}
+      {!session && (
+      <div className="bg-accent text-white rounded-3xl p-5">
+        <div className="text-[11px] font-bold tracking-widest opacity-80">
+          TODAY'S WORKOUT
+        </div>
+        <h2 className="text-2xl font-extrabold leading-tight mt-1.5">
+          {activePlan.name}
+        </h2>
+
+        <div className="flex gap-8 mt-4">
+          <Stat label="EXERCISES" value={String(nExercises)} />
+          <Stat label="SETS"      value={String(nSets)} />
+          <Stat label="EST. TIME" value={`${estMin}m`} />
+        </div>
+
+        {/* exercise pills */}
+        <div className="flex flex-wrap gap-2 mt-4">
+          {today_workout?.exercises.map((e) => (
+            <span
+              key={e.exercise}
+              className="px-3.5 py-1.5 bg-white text-ink font-bold rounded-full text-sm"
+            >
+              {titleCase(e.exercise)}
+            </span>
+          ))}
+        </div>
+
+        {today_workout ? (
+          <button
+            onClick={startToday}
+            className="w-full mt-5 bg-white text-ink font-bold py-4 rounded-2xl text-lg flex items-center justify-center gap-3 active:bg-panel-dark transition"
+          >
+            <PlayIcon size={14} color="#1A1330" />
+            Start workout
+          </button>
+        ) : (
+          <button
+            onClick={() => goTo("plans")}
+            className="w-full mt-5 bg-white text-ink font-bold py-4 rounded-2xl text-lg active:bg-panel-dark transition"
+          >
+            + Create a plan
+          </button>
+        )}
+      </div>
       )}
 
-      {/* ── Centre column ─────────────────────────────────────────────── */}
-      <section className="flex flex-col">
-        {/* Date + Day name + Week dots row */}
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="text-xs font-bold tracking-widest text-gray-dark">
-              {dateHeader}
-            </div>
-            <h1 className="text-5xl font-extrabold text-ink leading-none mt-2">
-              {dayLabel}
-            </h1>
-          </div>
-          <WeekDots todayIdx={todayMonIdx} completed={completedDays} />
+      {/* Quick Start — flat list of cards, no wrapping panel */}
+      <section>
+        <div className="text-[11px] font-bold tracking-widest text-gray-dark mb-2 px-1">
+          QUICK START
         </div>
-
-        {/* Hero workout card */}
-        <div className="bg-accent text-white rounded-3xl p-7 mt-6 flex flex-col flex-1">
-          <div className="text-[11px] font-bold tracking-widest opacity-80">
-            TODAY'S WORKOUT
-          </div>
-          <h2 className="text-5xl font-extrabold leading-none mt-2">
-            {activePlan.name}
-          </h2>
-
-          <div className="flex gap-10 mt-6">
-            <Stat label="EXERCISES" value={String(nExercises)} />
-            <Stat label="SETS"      value={String(nSets)} />
-            <Stat label="EST. TIME" value={`${estMin}m`} />
-          </div>
-
-          {/* exercise pills */}
-          <div className="flex flex-wrap gap-2 mt-5">
-            {today_workout?.exercises.map((e) => (
-              <span
-                key={e.exercise}
-                className="px-4 py-1.5 bg-white text-ink font-bold rounded-full text-sm"
-              >
-                {titleCase(e.exercise)}
-              </span>
-            ))}
-          </div>
-
-          {/* Start button at the bottom */}
-          {today_workout ? (
-            <button
-              onClick={startToday}
-              className="mt-auto bg-white text-ink font-bold py-4 rounded-2xl text-lg flex items-center justify-center gap-3 hover:bg-panel-dark transition"
-            >
-              <PlayIcon size={14} color="#1A1330" />
-              Start workout
-            </button>
-          ) : (
-            <button
-              onClick={() => goTo("plans")}
-              className="mt-auto bg-white text-ink font-bold py-4 rounded-2xl text-lg hover:bg-panel-dark transition"
-            >
-              + Create a plan
-            </button>
-          )}
-        </div>
-      </section>
-
-      {/* ── Right sidebar ─────────────────────────────────────────────── */}
-      <aside className="flex flex-col gap-5">
-        {/* Continue active session */}
-        <ContinueCard />
-
-        {/* Quick Start */}
-        <div className="bg-panel rounded-3xl p-5 border border-border shadow-card">
-          <div className="text-[11px] font-bold tracking-widest text-gray-dark mb-3 px-1">
-            QUICK START
-          </div>
+        <div className="flex flex-col gap-2">
           {quick.map((name) => (
             <button
               key={name}
               onClick={() => startQuick(name)}
-              className="w-full flex items-center bg-panel-dark rounded-xl px-4 py-3 mt-2 hover:bg-bg transition"
+              className="w-full min-h-[56px] flex items-center bg-panel border border-border rounded-2xl px-4 py-3 shadow-card active:bg-panel-dark transition"
             >
-              {/* red ring icon — matches the screenshot */}
-              <span className="w-7 h-7 rounded-full border-2 border-accent grid place-items-center mr-3" />
+              <span className="w-7 h-7 rounded-full border-2 border-accent shrink-0 mr-3" />
               <span className="font-bold flex-1 text-left text-ink">
                 {titleCase(name)}
               </span>
@@ -299,15 +287,15 @@ export function Home() {
             </button>
           ))}
         </div>
+      </section>
 
-        {/* Last Session */}
-        <div className="bg-panel rounded-3xl p-5 border border-border shadow-card flex-1 min-h-[280px]">
-          <div className="text-[11px] font-bold tracking-widest text-gray-dark mb-3 px-1">
-            LAST SESSION
-          </div>
-          {!last && (
-            <div className="text-gray-dark px-1">No sessions yet</div>
-          )}
+      {/* Last Session */}
+      <section>
+        <div className="text-[11px] font-bold tracking-widest text-gray-dark mb-2 px-1">
+          LAST SESSION
+        </div>
+        <div className="bg-panel rounded-2xl p-4 border border-border shadow-card">
+          {!last && <div className="text-gray-dark">No sessions yet</div>}
           {last && (() => {
             const d = parseISODate(last.date);
             const sub = d ? formatHistoryDate(d) : last.date;
@@ -319,18 +307,18 @@ export function Home() {
             const totalReps = last.exercises.reduce(
               (s, e) => s + e.sets.reduce((x, r) => x + r.reps, 0), 0);
             return (
-              <div className="px-1">
-                <div className="text-2xl font-extrabold text-ink">{title}</div>
+              <>
+                <div className="text-xl font-extrabold text-ink">{title}</div>
                 <div className="text-sm text-gray-dark mt-0.5">{sub}</div>
-                <div className="grid grid-cols-2 gap-3 mt-5">
+                <div className="grid grid-cols-2 gap-3 mt-4">
                   <Tile label="REPS"  value={String(totalReps)} />
                   <Tile label="COINS" value={String(last.coinsEarned)} />
                 </div>
-              </div>
+              </>
             );
           })()}
         </div>
-      </aside>
+      </section>
     </div>
   );
 }
@@ -370,25 +358,28 @@ function ContinueCard() {
   const setLabel = `Set ${setIdx + 1}/${workout?.sets.length ?? 0}`;
   const exLabel  = `Ex ${workoutIdx + 1}/${session.workouts.length}`;
 
+  // Compact single row: with the hero card hidden during a session, this is
+  // the screen's primary action and doesn't need to shout.
   return (
-    <div className="bg-good rounded-3xl p-5 shadow-card">
-      <div className="text-[11px] font-bold tracking-widest text-white/80 mb-1">
-        WORKOUT IN PROGRESS
+    <div className="bg-good rounded-2xl px-4 py-3 flex items-center gap-3 shadow-card">
+      <span className="w-2 h-2 rounded-full bg-white shrink-0" />
+      <div className="flex-1 min-w-0">
+        <div className="font-bold text-white truncate">{titleCase(exercise)}</div>
+        <div className="text-xs text-white/80 truncate">{exLabel} · {setLabel}</div>
       </div>
-      <div className="text-xl font-extrabold text-white">{titleCase(exercise)}</div>
-      <div className="text-sm text-white/80 mt-0.5">{exLabel} · {setLabel}</div>
       <button
         onClick={() => goTo("training")}
-        className="mt-3 w-full bg-white text-ink font-bold py-3 rounded-2xl text-base flex items-center justify-center gap-2 hover:bg-panel-dark transition"
+        className="shrink-0 bg-white text-good font-bold px-4 min-h-[44px] rounded-xl flex items-center gap-2 active:bg-panel-dark transition"
       >
-        <PlayIcon size={12} color="#1A1330" />
+        <PlayIcon size={11} />
         Continue
       </button>
     </div>
   );
 }
 
-function WeekDots({
+/** Full-width weekday strip; each cell flexes so the row spans the screen. */
+function WeekStrip({
   todayIdx,
   completed,
 }: {
@@ -409,7 +400,7 @@ function WeekDots({
           <div
             key={i}
             className={
-              "w-9 h-9 rounded-lg grid place-items-center font-bold text-sm border " + cls
+              "flex-1 h-11 rounded-xl grid place-items-center font-bold text-sm border " + cls
             }
           >
             {letter}

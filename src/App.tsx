@@ -8,6 +8,7 @@ import { unlockAudio } from "@/audio/sfx";
 import { startMusic } from "@/audio/music";
 
 import { TopNav }            from "@/components/TopNav";
+import { BottomNav }         from "@/components/BottomNav";
 import { Home }              from "@/components/Home";
 import { Plans }             from "@/components/Plans";
 import { Exercises }         from "@/components/Exercises";
@@ -73,7 +74,16 @@ export default function App() {
   return (
     <div className="h-full flex flex-col bg-bg safe-area">
       {!fullscreen && <TopNav initials={getSettings().initials} />}
-      <main className="flex-1 overflow-auto">
+      {/* Bottom padding reserves room for the fixed BottomNav (56px bar +
+          safe-area inset) so the last card is never trapped behind it. */}
+      <main
+        className="flex-1 overflow-auto"
+        style={
+          fullscreen
+            ? undefined
+            : { paddingBottom: "calc(56px + env(safe-area-inset-bottom))" }
+        }
+      >
         {scene === "home"      && <Home      />}
         {scene === "plans"     && <Plans     />}
         {scene === "exercises" && <Exercises />}
@@ -84,6 +94,7 @@ export default function App() {
         {scene === "stats"     && <Stats     />}
         {scene === "settings"  && <Settings  />}
       </main>
+      {!fullscreen && <BottomNav />}
       {showRecovery && (
         <SessionRecovery onDismiss={() => setShowRecovery(false)} />
       )}
