@@ -55,3 +55,21 @@ export async function kvImportAll(
   }
   await tx.done;
 }
+
+/**
+ * Ask the browser to treat this origin's storage as durable ("best effort"
+ * storage — the default — can otherwise be evicted under disk pressure,
+ * which mobile browsers do far more eagerly than desktop). Best-effort and
+ * silent: some browsers grant it automatically for installed PWAs, some
+ * prompt, some don't support the API at all. The Export/Import backup
+ * (src/data/transfer.ts) remains the real safety net regardless of the
+ * outcome here.
+ */
+export async function requestPersistentStorage(): Promise<boolean> {
+  if (!navigator.storage?.persist) return false;
+  try {
+    return await navigator.storage.persist();
+  } catch {
+    return false;
+  }
+}

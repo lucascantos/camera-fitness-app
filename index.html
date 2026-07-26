@@ -15,6 +15,14 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="CamFitness" />
+    <!-- vite-plugin-pwa injects the <link rel="manifest"> automatically at
+         build time. iOS Safari doesn't reliably read the manifest's icons
+         array for "Add to Home Screen", so the apple-touch-icon needs its
+         own explicit tag. %BASE_URL% is Vite's placeholder for the
+         configured `base` (the GitHub Pages sub-path in prod, "/" in dev). -->
+    <link rel="icon" href="%BASE_URL%icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="%BASE_URL%icons/apple-touch-icon.png" />
     <title>Camera Fitness App</title>
   </head>
   <body class="bg-bg text-white">

@@ -5,11 +5,17 @@ import {
   type PoseLandmarkerResult,
 } from "@mediapipe/tasks-vision";
 
-const WASM_URL = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm";
+// Self-hosted (same-origin) rather than the jsdelivr CDN / Google Storage:
+// this is what makes the pose model work offline once the PWA's service
+// worker has cached them (Phase 2). Vendored into public/models/ by
+// scripts/vendor-mediapipe.mjs — see that file and docs/android-plan.md.
+// import.meta.env.BASE_URL carries Vite's configured `base` (the
+// "/camera-fitness-app/" GitHub Pages sub-path in production, "/" in dev), so
+// these resolve correctly under either.
+const WASM_URL = `${import.meta.env.BASE_URL}models/wasm`;
 // "lite" model: ~2-3x faster inference than "full", at a small accuracy cost.
 // This is the dominant FPS lever since detectForVideo runs synchronously.
-const MODEL_URL =
-  "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task";
+const MODEL_URL = `${import.meta.env.BASE_URL}models/pose_landmarker_lite.task`;
 
 // We downscale each camera frame to this longest-side before inference.
 // Landmarks come back normalised (0..1), so the overlay mapping is unaffected;

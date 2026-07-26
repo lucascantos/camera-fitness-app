@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getSettings, loadSettings } from "@/data/settings/settings";
+import { requestPersistentStorage } from "@/data/db";
 import { loadAthlete } from "@/data/athlete/athlete";
 import { useSessionStore, loadPersistedSession } from "@/stores/sessionStore";
 import { useWakeLock } from "@/hooks/useWakeLock";
@@ -39,6 +40,11 @@ export default function App() {
       if (persisted) setShowRecovery(true);
       setReady(true);
     });
+    // Best-effort ask to exempt our IndexedDB data from eviction under
+    // storage pressure — mobile browsers reclaim "best effort" storage far
+    // more aggressively than desktop. Fire-and-forget: nothing in the UI
+    // depends on the outcome.
+    void requestPersistentStorage();
   }, []);
 
   // First user gesture unlocks WebAudio (iOS Safari) and kicks the music

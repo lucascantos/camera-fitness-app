@@ -2,6 +2,12 @@
 dist/
 .vite/
 
+# Vendored MediaPipe runtime assets (~44MB) — reproducible via
+# `npm run vendor:mediapipe` (also runs automatically before dev/build), so
+# they aren't committed. See scripts/vendor-mediapipe.mjs.
+/public/models/wasm/
+/public/models/*.task
+
 # Dependencies
 node_modules/
 
