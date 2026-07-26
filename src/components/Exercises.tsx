@@ -1,6 +1,10 @@
 // Ported from: legacy exercise-library screen.
-// Search · muscle filter · equipment filter · sort · list of exercises with
-// best-set lookup, CAM badge, favourite star, play button.
+//
+// Mobile-first: a search field and a list of exercises. Sort, body-part and
+// equipment filters live in a bottom sheet rather than an always-visible
+// filter row — three wrapping pill rows ate most of a phone screen before the
+// first result. The filter button carries a dot when anything is narrowing
+// the list, so hidden filters can't silently strand the user on "No matches".
 
 import { useMemo, useState } from "react";
 import {
@@ -13,12 +17,11 @@ import {
   type ExerciseMeta,
   type MuscleGroup,
 } from "@/data/exercises/catalog";
-import { TRACKED_EXERCISES } from "@/tracking/exercises/registry";
 import { bestSetFor, lastSetFor, formatBest, type BestSet } from "@/data/athlete/bestSet";
-import { favoriteCount, isFavorite, toggleFavorite } from "@/data/settings/favorites";
+import { isFavorite, toggleFavorite } from "@/data/settings/favorites";
 import { makeSession } from "@/data/plans/plans";
 import { useSessionStore } from "@/stores/sessionStore";
-import { PlayIcon } from "@/components/icons";
+import { PlayIcon, FilterIcon, SortIcon } from "@/components/icons";
 
 type SortMode = "az" | "best" | "favorite";
 
@@ -38,17 +41,23 @@ const SORT_LABEL: Record<SortMode, string> = {
 
 const SORT_ORDER: SortMode[] = ["az", "best", "favorite"];
 
+/** The filter/sort selection the sheet edits. */
+interface Filters {
+  muscle: MuscleGroup | "All";
+  equip: Equipment | "any";
+  sort: SortMode;
+}
+
+const DEFAULT_FILTERS: Filters = { muscle: "All", equip: "any", sort: "az" };
+
 export function Exercises() {
   const { startSession } = useSessionStore();
-  const [query,     setQuery]    = useState("");
-  const [muscle,    setMuscle]   = useState<MuscleGroup | "All">("All");
-  const [equip,     setEquip]    = useState<Equipment | "any">("any");
-  const [sortMode,  setSortMode] = useState<SortMode>("az");
+  const [query,   setQuery]   = useState("");
+  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
+  const [sheetOpen, setSheetOpen] = useState(false);
   // Bump on favourite toggle to re-evaluate isFavorite() reads.
   const [favTick, setFavTick] = useState(0);
 
-  // Compute best set for every exercise once, recompute when favourites or
-  // history change between renders. Cheap — list is 8 long.
   const enriched = useMemo(() => {
     return EXERCISE_CATALOG.map((m) => ({
       meta: m,
@@ -63,33 +72,30 @@ export function Exercises() {
     let rows = enriched;
     const q = query.trim().toLowerCase();
     if (q) rows = rows.filter((r) => r.meta.name.includes(q));
-    if (muscle !== "All") {
-      rows = rows.filter((r) => muscleInGroup(r.meta.primary, muscle));
+    if (filters.muscle !== "All") {
+      rows = rows.filter((r) => muscleInGroup(r.meta.primary, filters.muscle as MuscleGroup));
     }
-    if (equip !== "any") {
-      rows = rows.filter((r) => r.meta.equipment === equip);
+    if (filters.equip !== "any") {
+      rows = rows.filter((r) => r.meta.equipment === filters.equip);
     }
     const sorted = rows.slice();
-    if (sortMode === "az") {
+    if (filters.sort === "az") {
       sorted.sort((a, b) => a.meta.name.localeCompare(b.meta.name));
-    } else if (sortMode === "best") {
+    } else if (filters.sort === "best") {
       sorted.sort((a, b) => weightScore(b.best) - weightScore(a.best));
-    } else { // favorites
+    } else {
       sorted.sort((a, b) =>
         Number(b.fav) - Number(a.fav) || a.meta.name.localeCompare(b.meta.name));
     }
     return sorted;
-  }, [enriched, query, muscle, equip, sortMode]);
+  }, [enriched, query, filters]);
 
   const startOne = (name: string) => {
     // Standalone start (not a plan with progression): pre-fill the set with the
     // weight/reps the athlete last logged for this exercise, falling back to a
     // sensible 10-rep / bodyweight default if there's no history.
     const last = lastSetFor(name);
-    const reps = last?.reps ?? 10;
-    const weight = last?.weight ?? 0;
-    const s = makeSession(1, [[name, [[reps, weight, false]]]]);
-    startSession(s);
+    startSession(makeSession(1, [[name, [[last?.reps ?? 10, last?.weight ?? 0, false]]]]));
   };
 
   const onToggleFav = async (name: string) => {
@@ -97,74 +103,69 @@ export function Exercises() {
     setFavTick((t) => t + 1);
   };
 
-  const trackedTotal = TRACKED_EXERCISES.length;
+  const filtersActive =
+    filters.muscle !== "All" || filters.equip !== "any" || filters.sort !== "az";
   const catalogTotal = EXERCISE_CATALOG.length;
 
   return (
-    <div className="px-8 pb-8">
-      {/* ── Header ─────────────────────────────────────────────── */}
-      <header className="flex items-start justify-between mb-6">
-        <div>
-          <div className="text-[11px] font-bold tracking-widest text-gray-dark">
-            EXERCISE LIBRARY
-          </div>
-          <h1 className="text-5xl font-extrabold text-ink mt-2">
-            Pick something to do
-          </h1>
-        </div>
-        <div className="flex gap-3">
-          <Metric label="TRACKED"   value={`${trackedTotal}`} suffix={`/${catalogTotal}`} />
-          <Metric label="FAVORITES" value={String(favoriteCount())} />
-        </div>
-      </header>
+    <div className="flex flex-col gap-3 px-4 pb-4 max-w-lg mx-auto w-full">
+      <div className="text-[11px] font-bold tracking-widest text-gray-dark">
+        EXERCISE LIBRARY
+      </div>
 
-      {/* ── Search + calibrated ────────────────────────────────── */}
-      <div className="flex gap-3 items-stretch">
-        <div className="flex-1 flex items-center bg-panel rounded-2xl border border-border px-4 shadow-card">
+      {/* Search + filter trigger */}
+      <div className="flex gap-2 items-stretch">
+        <div className="flex-1 flex items-center bg-panel rounded-2xl border border-border px-3 shadow-card">
           <span className="text-gray-dark mr-2">🔍</span>
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={`Search ${catalogTotal} exercises...`}
-            className="flex-1 bg-transparent outline-none py-3 text-ink placeholder:text-gray-dark"
+            className="flex-1 min-w-0 bg-transparent outline-none py-3 text-ink placeholder:text-gray-dark"
           />
+          {query && (
+            <button
+              onClick={() => setQuery("")}
+              className="text-gray-dark text-xl px-1 shrink-0"
+              aria-label="Clear search"
+            >
+              ×
+            </button>
+          )}
         </div>
-        <div className="px-4 flex items-center bg-panel rounded-2xl border border-border shadow-card">
-          <span className="w-2 h-2 rounded-full bg-good mr-2" />
-          <span className="font-bold text-good text-sm">Calibrated</span>
-        </div>
-      </div>
-
-      {/* ── Filter row ─────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center gap-2 mt-4">
-        <Pill selected={muscle === "All"} onClick={() => setMuscle("All")}>All</Pill>
-        {MUSCLE_GROUPS.map((g) => (
-          <Pill key={g.id} selected={muscle === g.id} onClick={() => setMuscle(g.id)}>
-            {g.id}
-          </Pill>
-        ))}
-        <span className="w-1 h-6 mx-2" />
-        {EQUIPMENT_FILTERS.map((e) => (
-          <Pill key={e.id} selected={equip === e.id} onClick={() => setEquip(e.id)}>
-            {e.label}
-          </Pill>
-        ))}
-        <div className="flex-1" />
         <button
-          onClick={() =>
-            setSortMode((s) => SORT_ORDER[(SORT_ORDER.indexOf(s) + 1) % SORT_ORDER.length])
-          }
-          className="px-4 py-1.5 rounded-full bg-panel border border-border text-gray-dark text-sm font-bold hover:bg-panel-dark hover:text-ink transition"
-          title="Cycle sort order"
+          onClick={() => setSheetOpen(true)}
+          className="relative w-12 shrink-0 grid place-items-center bg-panel rounded-2xl border border-border shadow-card text-ink active:bg-panel-dark transition"
+          aria-label="Filters and sort"
         >
-          ⇅ Sort: {SORT_LABEL[sortMode]}
+          <FilterIcon size={18} />
+          {filtersActive && (
+            <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-accent" />
+          )}
         </button>
       </div>
 
-      {/* ── List ───────────────────────────────────────────────── */}
-      <div className="mt-4 bg-panel rounded-2xl border border-border shadow-card divide-y divide-border">
+      {/* Active-filter summary — the escape hatch when the sheet is closed */}
+      {filtersActive && (
+        <button
+          onClick={() => setFilters(DEFAULT_FILTERS)}
+          className="self-start text-xs font-bold text-accent px-1"
+        >
+          Clear filters ·{" "}
+          {[
+            filters.muscle !== "All" ? filters.muscle : null,
+            filters.equip !== "any"
+              ? EQUIPMENT_FILTERS.find((e) => e.id === filters.equip)?.label
+              : null,
+            filters.sort !== "az" ? SORT_LABEL[filters.sort] : null,
+          ].filter(Boolean).join(" · ")}
+        </button>
+      )}
+
+      {/* List */}
+      <div className="flex flex-col gap-2">
         {visible.length === 0 && (
-          <div className="p-8 text-center text-gray-dark">No matches.</div>
+          <div className="py-10 text-center text-gray-dark">No matches.</div>
         )}
         {visible.map(({ meta, tracked, best, fav }) => (
           <Row
@@ -178,27 +179,126 @@ export function Exercises() {
           />
         ))}
       </div>
+
+      {sheetOpen && (
+        <FilterSheet
+          value={filters}
+          onApply={(f) => { setFilters(f); setSheetOpen(false); }}
+          onClose={() => setSheetOpen(false)}
+        />
+      )}
     </div>
   );
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// Subcomponents
+// Filter bottom sheet
 // ──────────────────────────────────────────────────────────────────────────
 
-function Metric({ label, value, suffix }: {
-  label: string; value: string; suffix?: string;
+function FilterSheet({
+  value, onApply, onClose,
+}: {
+  value: Filters;
+  onApply(f: Filters): void;
+  onClose(): void;
 }) {
+  // Edited as a draft so backing out with × leaves the list untouched.
+  const [draft, setDraft] = useState<Filters>(value);
+
   return (
-    <div className="bg-panel rounded-2xl px-5 py-3 border border-border shadow-card min-w-[120px]">
-      <div className="text-[10px] font-bold tracking-widest text-gray-dark">
-        {label}
-      </div>
-      <div className="text-2xl font-extrabold text-ink mt-1">
-        {value}
-        {suffix && <span className="text-gray-dark text-base font-bold ml-0.5">{suffix}</span>}
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-end" onClick={onClose}>
+      <div
+        className="w-full bg-bg rounded-t-3xl max-h-[85dvh] overflow-y-auto"
+        style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* drag handle */}
+        <div className="pt-3 pb-1 grid place-items-center">
+          <span className="w-10 h-1 rounded-full bg-border" />
+        </div>
+
+        <div className="px-5 pb-2 flex items-center justify-between">
+          <h2 className="text-xl font-extrabold text-ink">Filters</h2>
+          <button
+            onClick={onClose}
+            className="w-9 h-9 rounded-full bg-panel border border-border grid place-items-center text-gray-dark text-xl leading-none"
+            aria-label="Close filters"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="px-5 flex flex-col gap-5 mt-2">
+          {/* Sort — tapping cycles through the modes */}
+          <Group label="SORT">
+            <button
+              onClick={() =>
+                setDraft((d) => ({
+                  ...d,
+                  sort: SORT_ORDER[(SORT_ORDER.indexOf(d.sort) + 1) % SORT_ORDER.length],
+                }))
+              }
+              className="w-full min-h-[52px] flex items-center justify-between bg-panel rounded-2xl border border-border px-4 font-bold text-ink"
+            >
+              {SORT_LABEL[draft.sort]}
+              <SortIcon size={16} />
+            </button>
+          </Group>
+
+          <Group label="BODY PART">
+            <div className="flex flex-wrap gap-2">
+              <Pill
+                selected={draft.muscle === "All"}
+                onClick={() => setDraft((d) => ({ ...d, muscle: "All" }))}
+              >
+                All
+              </Pill>
+              {MUSCLE_GROUPS.map((g) => (
+                <Pill
+                  key={g.id}
+                  selected={draft.muscle === g.id}
+                  onClick={() => setDraft((d) => ({ ...d, muscle: g.id }))}
+                >
+                  {g.id}
+                </Pill>
+              ))}
+            </div>
+          </Group>
+
+          <Group label="EQUIPMENT">
+            <div className="flex flex-wrap gap-2">
+              {EQUIPMENT_FILTERS.map((e) => (
+                <Pill
+                  key={e.id}
+                  selected={draft.equip === e.id}
+                  onClick={() => setDraft((d) => ({ ...d, equip: e.id }))}
+                >
+                  {e.label}
+                </Pill>
+              ))}
+            </div>
+          </Group>
+
+          <button
+            onClick={() => onApply(draft)}
+            className="w-full min-h-[56px] rounded-2xl font-bold text-lg bg-accent text-white active:bg-accent-hov transition mt-1"
+          >
+            Apply filters
+          </button>
+        </div>
       </div>
     </div>
+  );
+}
+
+function Group({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <section>
+      <div className="text-[11px] font-bold tracking-widest text-gray-dark mb-2">
+        {label}
+      </div>
+      {children}
+    </section>
   );
 }
 
@@ -209,16 +309,20 @@ function Pill({ selected, onClick, children }: {
     <button
       onClick={onClick}
       className={
-        "px-4 py-1.5 rounded-full text-sm font-bold transition " +
+        "px-4 min-h-[44px] rounded-full text-sm font-bold transition " +
         (selected
           ? "bg-nav text-white"
-          : "bg-panel text-gray-dark border border-border hover:bg-panel-dark hover:text-ink")
+          : "bg-panel text-ink border border-border active:bg-panel-dark")
       }
     >
       {children}
     </button>
   );
 }
+
+// ──────────────────────────────────────────────────────────────────────────
+// List row
+// ──────────────────────────────────────────────────────────────────────────
 
 function Row({
   meta, tracked, best, favorite, onToggleFavorite, onStart,
@@ -230,10 +334,11 @@ function Row({
   onToggleFavorite(): void;
   onStart(): void;
 }) {
+  const equip = meta.equipment.charAt(0).toUpperCase() + meta.equipment.slice(1);
   return (
-    <div className="flex items-center gap-4 px-5 py-3.5 hover:bg-panel-dark transition">
+    <div className="flex items-center gap-3 bg-panel rounded-2xl border border-border shadow-card px-3 py-3">
       <span
-        className="w-10 h-10 rounded-full grid place-items-center font-extrabold text-ink"
+        className="w-10 h-10 rounded-xl grid place-items-center font-extrabold text-ink shrink-0"
         style={{ background: MUSCLE_COLORS[meta.primary] }}
       >
         {meta.name[0].toUpperCase()}
@@ -241,47 +346,38 @@ function Row({
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="font-bold text-ink truncate">
-            {titleCase(meta.name)}
-          </span>
+          <span className="font-bold text-ink truncate">{titleCase(meta.name)}</span>
           {tracked && (
-            <span className="px-1.5 py-0.5 rounded-md bg-good/15 text-good text-[10px] font-bold tracking-wider flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-good" />
+            <span className="px-1.5 py-0.5 rounded-md bg-good/15 text-good text-[10px] font-bold tracking-wider shrink-0">
               CAM
             </span>
           )}
         </div>
-        <div className="text-xs text-gray-dark mt-0.5">
-          {meta.primary} · {meta.equipment.charAt(0).toUpperCase() + meta.equipment.slice(1)}
+        {/* Best set rides along in the subtitle — the old right-hand BEST
+            column can't coexist with a name on a 375px row. */}
+        <div className="text-xs text-gray-dark mt-0.5 truncate">
+          {meta.primary} · {equip}
+          {best && <span className="text-ink font-semibold"> · {formatBest(best)}</span>}
         </div>
       </div>
 
       <button
         onClick={onToggleFavorite}
         className={
-          "text-xl transition " +
-          (favorite ? "text-coin" : "text-border hover:text-gray-dark")
+          "w-9 h-9 grid place-items-center text-xl shrink-0 transition " +
+          (favorite ? "text-coin" : "text-border")
         }
-        title={favorite ? "Unfavourite" : "Favourite"}
-        aria-label="Toggle favourite"
+        aria-label={favorite ? `Unfavourite ${meta.name}` : `Favourite ${meta.name}`}
       >
         {favorite ? "★" : "☆"}
       </button>
 
-      <div className="text-right min-w-[110px]">
-        <div className="text-[10px] font-bold tracking-widest text-gray-dark">BEST</div>
-        <div className={"font-extrabold mt-0.5 " + (best ? "text-ink" : "text-gray-dark")}>
-          {formatBest(best)}
-        </div>
-      </div>
-
       <button
         onClick={onStart}
-        className="w-12 h-12 rounded-2xl bg-accent hover:bg-accent-hov text-white grid place-items-center transition"
-        title={`Start ${titleCase(meta.name)}`}
+        className="w-11 h-11 rounded-full bg-accent active:bg-accent-hov text-white grid place-items-center shrink-0 transition"
         aria-label={`Start ${meta.name}`}
       >
-        <PlayIcon size={14} color="#FFFFFF" />
+        <PlayIcon size={13} color="#FFFFFF" />
       </button>
     </div>
   );
