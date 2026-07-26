@@ -6,6 +6,7 @@
   "description": "Browser-based fitness coach with camera-driven rep counting.",
   "scripts": {
     "dev": "vite",
+    "dev:mobile": "vite --mode mobile",
     "build": "tsc && vite build",
     "preview": "vite preview"
   },
@@ -20,6 +21,7 @@
     "@types/node": "^25.9.1",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-basic-ssl": "^1.2.0",
     "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.45",

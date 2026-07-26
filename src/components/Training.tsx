@@ -181,7 +181,7 @@ export function Training() {
     }
   }, [targetReps, isAmrap, side, onRep, videoRef]);
 
-  const { ready: mpReady, error: mpError } = useMediapipe(videoRef, onResult, !!trackerRef.current);
+  const { ready: mpReady, error: mpError, lowPerf } = useMediapipe(videoRef, onResult, !!trackerRef.current);
 
   function advance() {
     if (!session || !workout) return;
@@ -219,10 +219,14 @@ export function Training() {
   }
 
   return (
-    <div className="grid grid-cols-[1fr_460px] gap-4 p-4 h-full">
+    // Mobile: single column that scrolls (camera on top, controls below).
+    // lg+: the original side-by-side grid pinned to the viewport height.
+    <div className="flex flex-col gap-3 p-3 lg:grid lg:grid-cols-[1fr_460px] lg:gap-4 lg:p-4 lg:h-full">
       {/* Camera card */}
-      <div className="bg-panel-dark rounded-3xl p-4 flex flex-col">
-        <div className="flex-1 bg-panel rounded-2xl overflow-hidden relative">
+      <div className="bg-panel-dark rounded-3xl p-3 lg:p-4 flex flex-col">
+        {/* Fixed viewport-relative height on mobile (flex-1 has no bounded
+            parent there); fills the card on desktop. */}
+        <div className="relative bg-panel rounded-2xl overflow-hidden h-[55dvh] lg:h-auto lg:flex-1">
           <video
             ref={videoRef}
             muted
@@ -252,6 +256,11 @@ export function Training() {
           {trackerRef.current && !mpReady && !mpError && (
             <div className="absolute top-3 left-3 px-3 py-1 bg-bg/80 rounded-full text-sm">
               Loading pose model…
+            </div>
+          )}
+          {lowPerf && mpReady && (
+            <div className="absolute top-3 right-3 px-3 py-1 bg-coin/90 text-white rounded-full text-xs font-semibold">
+              Low performance — reduced tracking quality
             </div>
           )}
           {!trackerRef.current && (

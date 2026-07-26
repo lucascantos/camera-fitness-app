@@ -199,9 +199,11 @@ export function Home() {
   const trainerOn = getSettings().trainerEnabled;
   // 3-column when the trainer is on: [character | hero | sidebar]
   // 2-column when off so Today's Workout reclaims the negative space.
+  // Mobile: everything stacks in one scrolling column. lg+: the original
+  // multi-column dashboard pinned to viewport height.
   const gridCls = trainerOn
-    ? "grid grid-cols-[260px_1fr_320px] gap-6 px-8 pb-8 h-full"
-    : "grid grid-cols-[1fr_320px] gap-6 px-8 pb-8 h-full";
+    ? "flex flex-col gap-4 px-4 pb-4 lg:grid lg:grid-cols-[260px_1fr_320px] lg:gap-6 lg:px-8 lg:pb-8 lg:h-full"
+    : "flex flex-col gap-4 px-4 pb-4 lg:grid lg:grid-cols-[1fr_320px] lg:gap-6 lg:px-8 lg:pb-8 lg:h-full";
 
   return (
     <div className={gridCls}>

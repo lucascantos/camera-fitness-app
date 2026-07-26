@@ -34,16 +34,16 @@ export function Rest() {
   const pct = Math.max(0, (remaining / duration) * 100);
   const trainerOn = getSettings().trainerEnabled;
   const gridCls = trainerOn
-    ? "grid grid-cols-[260px_1fr] gap-6 p-10 h-full"
-    : "p-10 h-full";
+    ? "flex flex-col gap-6 p-4 lg:grid lg:grid-cols-[260px_1fr] lg:p-10 lg:h-full"
+    : "p-4 lg:p-10 lg:h-full";
 
   return (
     <div className={gridCls}>
       {trainerOn && <TrainerPanel characterHeight={300} />}
       <div>
-        <div className="bg-panel rounded-3xl p-10 max-w-3xl border border-border shadow-card">
+        <div className="bg-panel rounded-3xl p-6 lg:p-10 max-w-3xl border border-border shadow-card">
           <div className="text-accent text-3xl font-extrabold">REST</div>
-          <div className="text-[8rem] font-black leading-none mt-4 text-ink">
+          <div className="text-[5rem] lg:text-[8rem] font-black leading-none mt-4 text-ink">
             {Math.max(0, remaining)}
           </div>
           <div className="text-gray-dark text-lg">seconds remaining</div>

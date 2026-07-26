@@ -19,18 +19,22 @@ interface Props {
 export function TopNav({ initials = "ME" }: Props) {
   const { scene, goTo } = useSessionStore();
   return (
-    <nav className="flex items-center justify-between px-8 py-5 bg-bg">
-      {/* Logo + Save/Load data controls */}
-      <div className="flex items-center gap-5">
-        <div className="flex items-center">
+    <nav className="flex items-center justify-between gap-2 px-3 py-3 lg:px-8 lg:py-5 bg-bg">
+      {/* Logo + Save/Load data controls. The wordmark and inline Save/Load
+          hide on small screens (Save/Load is also in Settings › Data) so the
+          tab group and profile controls fit a phone in portrait. */}
+      <div className="flex items-center gap-3 lg:gap-5">
+        <div className="hidden sm:flex items-center">
           <span className="text-xl font-extrabold tracking-tight text-accent">CAMERA</span>
           <span className="text-xl font-extrabold tracking-tight text-ink ml-1">FITNESS</span>
         </div>
-        <SaveLoadBar />
+        <div className="hidden sm:block">
+          <SaveLoadBar />
+        </div>
       </div>
 
       {/* Tab pill group */}
-      <div className="flex items-center bg-panel rounded-full px-2 py-1 shadow-card border border-border">
+      <div className="flex items-center bg-panel rounded-full px-1.5 py-1 lg:px-2 shadow-card border border-border">
         {TABS.map((t) => {
           const active = scene === t.name;
           return (
@@ -38,7 +42,7 @@ export function TopNav({ initials = "ME" }: Props) {
               key={t.name}
               onClick={() => goTo(t.name)}
               className={
-                "px-6 py-2 rounded-full text-sm font-bold transition " +
+                "px-3 py-2 lg:px-6 rounded-full text-xs lg:text-sm font-bold transition " +
                 (active
                   ? "bg-nav text-white"
                   : "text-gray-dark hover:text-ink")

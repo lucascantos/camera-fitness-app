@@ -11,8 +11,17 @@ export function useCamera() {
     let s: MediaStream | null = null;
     (async () => {
       try {
+        // `ideal` (not fixed) constraints: a phone held in portrait can only
+        // deliver ~720x1280, and an exact 1280x720 request would either fail
+        // or force a letterboxed landscape crop. Asking for an ideal lets the
+        // browser pick the closest valid mode for the device/orientation.
+        // Landmarks come back normalised, so the overlay maths is unaffected.
         s = await navigator.mediaDevices.getUserMedia({
-          video: { width: 1280, height: 720, facingMode: "user" },
+          video: {
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            facingMode: "user",
+          },
           audio: false,
         });
         if (!active) { s.getTracks().forEach((t) => t.stop()); return; }

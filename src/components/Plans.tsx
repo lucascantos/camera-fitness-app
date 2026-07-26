@@ -203,7 +203,7 @@ export function Plans() {
   // ────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="grid grid-cols-[300px_1fr] gap-6 px-8 pb-8 h-full">
+    <div className="flex flex-col gap-4 px-4 pb-4 lg:grid lg:grid-cols-[300px_1fr] lg:gap-6 lg:px-8 lg:pb-8 lg:h-full">
       {/* ── Left rail: plan list ─────────────────────────────────── */}
       <aside className="bg-panel rounded-3xl p-5 border border-border shadow-card flex flex-col">
         <header className="flex items-baseline justify-between px-1 mb-3">
@@ -567,7 +567,7 @@ function ExercisePicker({
       onClick={onClose}
     >
       <div
-        className="bg-panel rounded-3xl p-6 w-[480px] max-h-[70vh] overflow-y-auto border border-border shadow-card"
+        className="bg-panel rounded-3xl p-6 w-full max-w-[480px] mx-4 max-h-[80dvh] overflow-y-auto border border-border shadow-card"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-baseline justify-between mb-4">

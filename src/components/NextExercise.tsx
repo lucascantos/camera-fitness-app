@@ -28,13 +28,13 @@ export function NextExercise() {
 
   const trainerOn = getSettings().trainerEnabled;
   const gridCls = trainerOn
-    ? "grid grid-cols-[260px_1fr] gap-6 p-10 h-full"
-    : "p-10 h-full";
+    ? "flex flex-col gap-6 p-4 lg:grid lg:grid-cols-[260px_1fr] lg:p-10 lg:h-full"
+    : "p-4 lg:p-10 lg:h-full";
 
   return (
     <div className={gridCls}>
       {trainerOn && <TrainerPanel characterHeight={300} />}
-      <div className="bg-panel rounded-3xl p-10 max-w-3xl border border-border shadow-card flex flex-col">
+      <div className="bg-panel rounded-3xl p-6 lg:p-10 max-w-3xl border border-border shadow-card flex flex-col">
         <div className="text-good text-xl font-extrabold tracking-widest">
           EXERCISE COMPLETE
         </div>

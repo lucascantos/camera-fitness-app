@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { getSettings, loadSettings } from "@/data/settings/settings";
 import { loadAthlete } from "@/data/athlete/athlete";
 import { useSessionStore, loadPersistedSession } from "@/stores/sessionStore";
+import { useWakeLock } from "@/hooks/useWakeLock";
 import { unlockAudio } from "@/audio/sfx";
 import { startMusic } from "@/audio/music";
 
@@ -21,6 +22,16 @@ export default function App() {
   const { scene } = useSessionStore();
   const [ready, setReady] = useState(false);
   const [showRecovery, setShowRecovery] = useState(false);
+
+  // Scenes that hide TopNav (full-screen workout flow).
+  const fullscreen =
+    scene === "training" || scene === "rest" ||
+    scene === "transition" || scene === "complete";
+
+  // Keep the screen awake for the whole workout flow (training + rest +
+  // transition + complete), where the user often isn't touching the phone.
+  // Called before the `!ready` early return to satisfy the rules of hooks.
+  useWakeLock(fullscreen);
 
   useEffect(() => {
     Promise.all([loadSettings(), loadAthlete()]).then(async () => {
@@ -53,13 +64,8 @@ export default function App() {
     );
   }
 
-  // Scenes that hide TopNav (full-screen workout flow).
-  const fullscreen =
-    scene === "training" || scene === "rest" ||
-    scene === "transition" || scene === "complete";
-
   return (
-    <div className="h-full flex flex-col bg-bg">
+    <div className="h-full flex flex-col bg-bg safe-area">
       {!fullscreen && <TopNav initials={getSettings().initials} />}
       <main className="flex-1 overflow-auto">
         {scene === "home"      && <Home      />}
