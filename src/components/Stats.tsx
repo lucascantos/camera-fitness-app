@@ -9,18 +9,19 @@ import { Body }     from "./stats/Body";
 type StatsTab = "progress" | "history" | "bodymap" | "body";
 
 const TABS: { id: StatsTab; label: string }[] = [
-  { id: "progress", label: "Progress" },
   { id: "history",  label: "History"  },
+  { id: "progress", label: "Progress" },
   { id: "bodymap",  label: "Body Map" },
   { id: "body",     label: "Body"     },
 ];
 
 export function Stats() {
-  const [tab, setTab] = useState<StatsTab>("progress");
+  const [tab, setTab] = useState<StatsTab>("history");
 
   return (
     <div>
-      <div className="flex gap-6 px-8 pb-3 border-b border-border">
+      {/* Scrolls horizontally if the four labels ever outgrow a narrow phone. */}
+      <div className="flex gap-5 px-4 pb-3 border-b border-border overflow-x-auto">
         {TABS.map((t) => {
           const on = t.id === tab;
           return (
