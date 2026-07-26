@@ -1,5 +1,13 @@
 // Ported from: scenes/workout_plans.py (legacy FitnessApp repo)
-// Plan list (left) + plan editor (right).
+//
+// Two screens, mobile-first:
+//   1. List    — "Your Plans", a + New plan affordance, one card per plan.
+//   2. Editor  — opened by tapping a card; a full-screen overlay with its own
+//                back header, so it covers the bottom tab bar the way a
+//                pushed route would.
+//
+// The editor is an overlay rather than a scene because the app has no router;
+// this matches how QuickSettings and the exercise picker already work.
 
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -26,7 +34,7 @@ import {
   MUSCLE_COLORS,
 } from "@/data/exercises/catalog";
 import { useSessionStore } from "@/stores/sessionStore";
-import { PlayIcon } from "@/components/icons";
+import { BackIcon, PlayIcon } from "@/components/icons";
 
 const PROGRESSIONS: { id: ProgressionId; label: string }[] = [
   { id: "linear",         label: "Linear" },
@@ -41,7 +49,7 @@ const PROGRESSION_LABEL: Record<ProgressionId, string> = {
 };
 
 // ──────────────────────────────────────────────────────────────────────────
-// Component
+// Container — owns the plan collection and which view is showing.
 // ──────────────────────────────────────────────────────────────────────────
 
 export function Plans() {
@@ -52,21 +60,22 @@ export function Plans() {
   const [draft, setDraft]           = useState<Plan | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [activeId, setActiveId]     = useState<string | null>(getSettings().activePlanId);
+  // True when the open editor is for a plan created this session, so the
+  // header can read "New Plan" instead of "Edit Plan".
+  const [isNew, setIsNew]           = useState(false);
 
-  // Initial load
   useEffect(() => {
     (async () => {
-      const all = await loadPlans();
-      setPlans(all);
-      const initial = all.find((p) => p.id === activeId) ?? all[0];
-      if (initial) {
-        setSelectedId(initial.id);
-        setDraft(structuredClone(initial));
-      }
+      setPlans(await loadPlans());
     })();
-  }, []); // eslint-disable-line
+  }, []);
 
-  // Dirty flag — true when the editor has unsaved changes.
+  // Home falls back to the first plan when no active id is stored, so the
+  // list must badge the same one — otherwise Home runs "today's workout" off
+  // a plan that shows no Active marker here.
+  const effectiveActiveId = activeId ?? plans[0]?.id ?? null;
+
+  // Dirty flag — drives the "unsaved changes" guard on back.
   const original = useMemo(
     () => plans.find((p) => p.id === selectedId) ?? null,
     [plans, selectedId],
@@ -77,41 +86,48 @@ export function Plans() {
     [draft, original],
   );
 
-  // ── plan list actions ────────────────────────────────────────────────
-  const selectPlan = (id: string) => {
+  // ── navigation ───────────────────────────────────────────────────────
+  const openPlan = (id: string) => {
     const p = plans.find((x) => x.id === id);
     if (!p) return;
     setSelectedId(id);
     setDraft(structuredClone(p));
     setActiveDayIdx(0);
+    setIsNew(false);
+  };
+
+  const closeEditor = () => {
+    if (dirty && !confirm("Discard unsaved changes?")) return;
+    setDraft(null);
+    setSelectedId(null);
+    setIsNew(false);
   };
 
   const createNew = async () => {
-    const p = await newPlanData("New plan");
-    const all = (await loadPlans()).slice();
-    setPlans(all);
+    const p = await newPlanData("Untitled Plan");
+    setPlans(await loadPlans());
     setSelectedId(p.id);
     setDraft(structuredClone(p));
     setActiveDayIdx(0);
+    setIsNew(true);
   };
 
-  const deleteCurrent = async () => {
-    if (!selectedId) return;
-    if (!confirm("Delete this plan?")) return;
-    const next = await deletePlanData(selectedId);
-    setPlans(next);
-    const fallback = next[0] ?? null;
-    setSelectedId(fallback?.id ?? null);
-    setDraft(fallback ? structuredClone(fallback) : null);
-    setActiveDayIdx(0);
-    setActiveId(getSettings().activePlanId);
-  };
-
+  // ── persistence ──────────────────────────────────────────────────────
   const saveCurrent = async () => {
     if (!draft) return;
     const next = plans.map((p) => (p.id === draft.id ? draft : p));
     await savePlans(next);
     setPlans(next);
+    setIsNew(false);
+  };
+
+  const deleteCurrent = async () => {
+    if (!selectedId) return;
+    if (!confirm("Delete this plan?")) return;
+    setPlans(await deletePlanData(selectedId));
+    setDraft(null);
+    setSelectedId(null);
+    setActiveId(getSettings().activePlanId);
   };
 
   const markActive = async () => {
@@ -123,8 +139,7 @@ export function Plans() {
   const startDay = () => {
     if (!draft || !draft.workouts[activeDayIdx]) return;
     const strategy = getStrategy(draft.progression);
-    const s = strategy.prepareSession(draft, activeDayIdx, getAthlete());
-    startSession(s);
+    startSession(strategy.prepareSession(draft, activeDayIdx, getAthlete()));
   };
 
   // ── draft mutators ───────────────────────────────────────────────────
@@ -141,8 +156,7 @@ export function Plans() {
 
   const addDay = () => {
     if (!draft) return;
-    const name = nextDayName(draft.workouts);
-    const workouts = [...draft.workouts, { name, exercises: [] }];
+    const workouts = [...draft.workouts, { name: nextDayName(draft.workouts), exercises: [] }];
     setDraft({ ...draft, workouts });
     setActiveDayIdx(workouts.length - 1);
   };
@@ -158,8 +172,7 @@ export function Plans() {
     if (!draft) return;
     const day = draft.workouts[activeDayIdx];
     const sets: PrescribedSet[] = [[10, 0, false], [10, 0, false], [10, 0, false]];
-    const next: WorkoutExercise = { exercise: name, sets };
-    patchDay(activeDayIdx, { exercises: [...day.exercises, next] });
+    patchDay(activeDayIdx, { exercises: [...day.exercises, { exercise: name, sets }] });
     setPickerOpen(false);
   };
 
@@ -198,69 +211,24 @@ export function Plans() {
     patchDay(activeDayIdx, { exercises });
   };
 
-  // ────────────────────────────────────────────────────────────────────
-  // Render
-  // ────────────────────────────────────────────────────────────────────
-
+  // ── render ───────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col gap-4 px-4 pb-4 lg:grid lg:grid-cols-[300px_1fr] lg:gap-6 lg:px-8 lg:pb-8 lg:h-full">
-      {/* ── Left rail: plan list ─────────────────────────────────── */}
-      <aside className="bg-panel rounded-3xl p-5 border border-border shadow-card flex flex-col">
-        <header className="flex items-baseline justify-between px-1 mb-3">
-          <span className="text-[11px] font-bold tracking-widest text-gray-dark">
-            YOUR PLANS
-          </span>
-          <span className="text-sm font-bold text-gray-dark">{plans.length}</span>
-        </header>
+    <>
+      <PlanList
+        plans={plans}
+        activeId={effectiveActiveId}
+        onOpen={openPlan}
+        onCreate={createNew}
+      />
 
-        <button
-          onClick={createNew}
-          className="border-2 border-dashed border-accent text-accent font-bold py-3 rounded-xl hover:bg-accent/5 transition"
-        >
-          + New plan
-        </button>
-
-        <div className="mt-4 flex flex-col gap-2 overflow-y-auto">
-          {plans.map((p) => {
-            const isSelected = p.id === selectedId;
-            const isActive   = p.id === activeId;
-            return (
-              <button
-                key={p.id}
-                onClick={() => selectPlan(p.id)}
-                className={
-                  "text-left px-4 py-3 rounded-xl border transition relative " +
-                  (isSelected
-                    ? "bg-panel-dark border-accent"
-                    : "bg-panel border-border hover:bg-panel-dark")
-                }
-              >
-                {/* red left border accent */}
-                <span
-                  className={
-                    "absolute left-1 top-2 bottom-2 w-1 rounded-full " +
-                    (isActive ? "bg-accent" : "bg-transparent")
-                  }
-                />
-                <div className="pl-3 font-bold text-ink">{p.name}</div>
-                <div className="pl-3 text-xs text-gray-dark mt-0.5">
-                  {(getStrategy(p.progression).describe?.(p, getAthlete())
-                    ?? PROGRESSION_LABEL[p.progression])}{" "}
-                  · {p.workouts.length} day{p.workouts.length === 1 ? "" : "s"}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </aside>
-
-      {/* ── Right column: editor ─────────────────────────────────── */}
-      {draft ? (
-        <Editor
+      {draft && (
+        <PlanEditor
           draft={draft}
+          isNew={isNew}
           activeDayIdx={activeDayIdx}
-          isActive={draft.id === activeId}
+          isActive={draft.id === effectiveActiveId}
           dirty={dirty}
+          onClose={closeEditor}
           onPatchDraft={patchDraft}
           onSelectDay={setActiveDayIdx}
           onAddDay={addDay}
@@ -274,8 +242,6 @@ export function Plans() {
           onSave={saveCurrent}
           onDelete={deleteCurrent}
         />
-      ) : (
-        <EmptyState onCreate={createNew} />
       )}
 
       {pickerOpen && draft && (
@@ -285,19 +251,88 @@ export function Plans() {
           onClose={() => setPickerOpen(false)}
         />
       )}
+    </>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// 1. List view
+// ──────────────────────────────────────────────────────────────────────────
+
+function PlanList({
+  plans, activeId, onOpen, onCreate,
+}: {
+  plans: Plan[];
+  activeId: string | null;
+  onOpen(id: string): void;
+  onCreate(): void;
+}) {
+  return (
+    <div className="flex flex-col gap-4 px-4 pb-4 max-w-lg mx-auto w-full">
+      <div className="flex items-baseline justify-between">
+        <h1 className="text-3xl font-extrabold text-ink">Your Plans</h1>
+        <span className="text-sm font-bold text-gray-dark">{plans.length}</span>
+      </div>
+
+      <button
+        onClick={onCreate}
+        className="border-2 border-dashed border-accent text-accent font-bold min-h-[56px] rounded-2xl active:bg-accent/5 transition"
+      >
+        + New plan
+      </button>
+
+      <div className="flex flex-col gap-3">
+        {plans.map((p) => {
+          const isActive = p.id === activeId;
+          return (
+            <button
+              key={p.id}
+              onClick={() => onOpen(p.id)}
+              className={
+                "w-full text-left flex items-center gap-3 bg-panel rounded-2xl px-4 py-4 shadow-card transition active:bg-panel-dark border-2 " +
+                (isActive ? "border-accent" : "border-transparent")
+              }
+            >
+              <div className="flex-1 min-w-0">
+                <div className="font-bold text-ink truncate">{p.name}</div>
+                <div className="text-xs text-gray-dark mt-0.5 truncate">
+                  {(getStrategy(p.progression).describe?.(p, getAthlete())
+                    ?? PROGRESSION_LABEL[p.progression])}{" "}
+                  · {p.workouts.length} day{p.workouts.length === 1 ? "" : "s"}
+                </div>
+              </div>
+              {isActive && (
+                <span className="px-2.5 py-1 rounded-full bg-good/15 text-good text-xs font-bold shrink-0">
+                  Active
+                </span>
+              )}
+              <span className="text-gray-dark text-xl leading-none shrink-0">›</span>
+            </button>
+          );
+        })}
+
+        {plans.length === 0 && (
+          <div className="text-center py-10">
+            <div className="text-xl font-extrabold text-ink">No plans yet</div>
+            <p className="text-gray-dark mt-1">Create your first plan to get started.</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// Subcomponents
+// 2. Editor view — full-screen overlay
 // ──────────────────────────────────────────────────────────────────────────
 
 interface EditorProps {
   draft: Plan;
+  isNew: boolean;
   activeDayIdx: number;
   isActive: boolean;
   dirty: boolean;
+  onClose(): void;
   onPatchDraft(p: Partial<Plan>): void;
   onSelectDay(i: number): void;
   onAddDay(): void;
@@ -312,173 +347,193 @@ interface EditorProps {
   onDelete(): void;
 }
 
-function Editor(p: EditorProps) {
+function PlanEditor(p: EditorProps) {
   const day = p.draft.workouts[p.activeDayIdx];
   const totalSets = day?.exercises.reduce((s, e) => s + e.sets.length, 0) ?? 0;
   const estMin = Math.max(1, Math.round(totalSets * 1.5));
+  const managed = getStrategy(p.draft.progression).managedExercises?.(p.draft)
+    ?? new Set<string>();
+  const isDefault = DEFAULT_PLANS.some((dp) => dp.id === p.draft.id);
 
   return (
-    <section className="flex flex-col overflow-y-auto">
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <div className="text-[11px] font-bold tracking-widest text-gray-dark">
-            PLAN NAME
-          </div>
-          <input
-            value={p.draft.name}
-            onChange={(e) => p.onPatchDraft({ name: e.target.value })}
-            className="w-full mt-2 text-3xl font-extrabold text-ink bg-panel-dark rounded-2xl px-5 py-3 border border-border focus:outline-none focus:border-accent"
-          />
-        </div>
+    <div className="fixed inset-0 z-40 bg-bg flex flex-col safe-area">
+      {/* Header — back + title */}
+      <header className="flex items-center gap-3 px-4 py-3 shrink-0">
         <button
-          onClick={p.onMarkActive}
-          disabled={p.isActive}
-          className={
-            "ml-5 mt-7 px-5 py-2 rounded-full font-bold border transition " +
-            (p.isActive
-              ? "bg-good text-white border-good cursor-default"
-              : "bg-panel text-ink border-border hover:bg-panel-dark")
-          }
+          onClick={p.onClose}
+          className="w-11 h-11 rounded-full bg-panel border border-border grid place-items-center text-ink shrink-0"
+          aria-label="Back to plans"
         >
-          {p.isActive ? "Active" : "Set as active"}
+          <BackIcon size={20} />
         </button>
-      </div>
+        <span className="text-lg font-extrabold text-ink truncate">
+          {p.isNew ? "New Plan" : "Edit Plan"}
+        </span>
+      </header>
 
-      {/* Progression + Days row */}
-      <div className="grid grid-cols-[1fr_auto] gap-8 mt-6">
-        <div>
-          <div className="text-[11px] font-bold tracking-widest text-gray-dark mb-2">
-            PROGRESSION
-          </div>
-          <div className="flex gap-2">
-            {PROGRESSIONS.map((pr) => (
-              <button
-                key={pr.id}
-                onClick={() => p.onPatchDraft({ progression: pr.id })}
-                className={
-                  "px-5 py-2 rounded-full font-bold text-sm transition " +
-                  (p.draft.progression === pr.id
-                    ? "bg-nav text-white"
-                    : "bg-panel text-gray-dark border border-border hover:bg-panel-dark")
-                }
-              >
-                {pr.label}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div>
-          <div className="text-[11px] font-bold tracking-widest text-gray-dark mb-2">
-            DAYS
-          </div>
-          <div className="flex gap-2 items-center">
-            {p.draft.workouts.map((d, i) => (
-              <button
-                key={i}
-                onClick={() => p.onSelectDay(i)}
-                className={
-                  "w-10 h-10 rounded-full font-bold transition " +
-                  (i === p.activeDayIdx
-                    ? "bg-accent text-white"
-                    : "bg-panel text-gray-dark border border-border hover:bg-panel-dark")
-                }
-              >
-                {d.name}
-              </button>
-            ))}
-            <button
-              onClick={p.onAddDay}
-              className="w-10 h-10 rounded-full bg-panel text-gray-dark border border-border hover:bg-panel-dark"
-              title="Add day"
-            >
-              +
-            </button>
-            {p.draft.workouts.length > 1 && (
-              <button
-                onClick={() => p.onDeleteDay(p.activeDayIdx)}
-                className="w-10 h-10 rounded-full bg-panel text-gray-dark border border-border hover:bg-panel-dark"
-                title="Remove this day"
-              >
-                ×
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Exercises header */}
-      <div className="flex items-baseline justify-between mt-7 px-1">
-        <div className="text-[11px] font-bold tracking-widest text-gray-dark">
-          EXERCISES · DAY {day?.name ?? "—"}
-        </div>
-        <div className="text-xs text-gray-dark">
-          {day?.exercises.length ?? 0} · ~{estMin} min
-        </div>
-      </div>
-
-      {/* Exercise rows */}
-      <div className="mt-3 flex flex-col gap-3">
-        {(() => {
-          const managed = getStrategy(p.draft.progression).managedExercises?.(p.draft)
-            ?? new Set<string>();
-          return day?.exercises.map((e, i) => (
-            <ExerciseRow
-              key={`${e.exercise}-${i}`}
-              index={i}
-              ex={e}
-              autoManaged={managed.has(e.exercise)}
-              onRemove={() => p.onRemoveExercise(i)}
-              onSets={(d) => p.onAdjustSets(i, d)}
-              onReps={(d) => p.onAdjustReps(i, d)}
+      {/* Scrolling body */}
+      <div className="flex-1 overflow-y-auto px-4 pb-4">
+        <div className="max-w-lg mx-auto w-full flex flex-col gap-5">
+          {/* Plan name */}
+          <Field label="PLAN NAME">
+            <input
+              value={p.draft.name}
+              onChange={(e) => p.onPatchDraft({ name: e.target.value })}
+              placeholder="Untitled Plan"
+              className="w-full text-xl font-bold text-ink bg-panel rounded-2xl px-4 py-3.5 border border-border focus:outline-none focus:border-accent placeholder:text-gray"
             />
-          ));
-        })()}
-        <button
-          onClick={p.onAddExercise}
-          className="border-2 border-dashed border-border text-gray-dark font-bold py-3 rounded-xl hover:bg-panel-dark transition"
-        >
-          + Add exercise
-        </button>
+          </Field>
+
+          {/* Progression — equal-width segmented control */}
+          <Field label="PROGRESSION">
+            <div className="flex gap-2">
+              {PROGRESSIONS.map((pr) => (
+                <button
+                  key={pr.id}
+                  onClick={() => p.onPatchDraft({ progression: pr.id })}
+                  className={
+                    "flex-1 min-h-[44px] rounded-2xl font-bold text-sm transition " +
+                    (p.draft.progression === pr.id
+                      ? "bg-nav text-white"
+                      : "bg-panel text-ink border border-border")
+                  }
+                >
+                  {pr.label}
+                </button>
+              ))}
+            </div>
+          </Field>
+
+          {/* Days */}
+          <Field
+            label="DAYS"
+            aside={`${day?.exercises.length ?? 0} exercises · ~${estMin} min`}
+          >
+            <div className="flex gap-2 items-center flex-wrap">
+              {p.draft.workouts.map((d, i) => (
+                <button
+                  key={i}
+                  onClick={() => p.onSelectDay(i)}
+                  className={
+                    "w-11 h-11 rounded-full font-bold transition " +
+                    (i === p.activeDayIdx
+                      ? "bg-accent text-white"
+                      : "bg-panel text-gray-dark border border-border")
+                  }
+                >
+                  {d.name}
+                </button>
+              ))}
+              <button
+                onClick={p.onAddDay}
+                className="w-11 h-11 rounded-full bg-panel text-gray-dark border border-border text-xl"
+                aria-label="Add day"
+              >
+                +
+              </button>
+              {p.draft.workouts.length > 1 && (
+                <button
+                  onClick={() => p.onDeleteDay(p.activeDayIdx)}
+                  className="w-11 h-11 rounded-full bg-panel text-gray-dark border border-border text-xl"
+                  aria-label="Remove this day"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+          </Field>
+
+          {/* Exercises */}
+          <Field label={`EXERCISES · DAY ${day?.name ?? "—"}`}>
+            <div className="flex flex-col gap-3">
+              {day?.exercises.map((e, i) => (
+                <ExerciseCard
+                  key={`${e.exercise}-${i}`}
+                  index={i}
+                  ex={e}
+                  autoManaged={managed.has(e.exercise)}
+                  onRemove={() => p.onRemoveExercise(i)}
+                  onSets={(d) => p.onAdjustSets(i, d)}
+                  onReps={(d) => p.onAdjustReps(i, d)}
+                />
+              ))}
+              <button
+                onClick={p.onAddExercise}
+                className="border-2 border-dashed border-border text-gray-dark font-bold min-h-[52px] rounded-2xl active:bg-panel-dark transition"
+              >
+                + Add exercise
+              </button>
+            </div>
+          </Field>
+
+          {/* Secondary actions */}
+          <div className="flex flex-col gap-2 pt-2">
+            <button
+              onClick={p.onMarkActive}
+              disabled={p.isActive}
+              className={
+                "min-h-[48px] rounded-2xl font-bold border transition " +
+                (p.isActive
+                  ? "bg-good/15 text-good border-transparent cursor-default"
+                  : "bg-panel text-ink border-border active:bg-panel-dark")
+              }
+            >
+              {p.isActive ? "✓ Active plan" : "Set as active"}
+            </button>
+            <button
+              onClick={p.onStartDay}
+              disabled={!day || day.exercises.length === 0}
+              className="min-h-[48px] rounded-2xl font-bold bg-panel text-ink border border-border active:bg-panel-dark transition flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              <PlayIcon size={12} />
+              Start Day {day?.name ?? ""}
+            </button>
+            <button
+              onClick={p.onDelete}
+              disabled={isDefault}
+              className="min-h-[48px] rounded-2xl font-bold text-accent active:bg-accent/5 transition disabled:opacity-40"
+            >
+              {isDefault ? "Built-in plan" : "Delete plan"}
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Footer */}
-      <div className="flex items-center gap-3 mt-8">
-        <button
-          onClick={p.onSave}
-          disabled={!p.dirty}
-          className={
-            "flex-1 py-4 rounded-2xl font-bold border transition " +
-            (p.dirty
-              ? "bg-panel text-ink border-border hover:bg-panel-dark"
-              : "bg-panel-dark text-gray-dark border-border cursor-default")
-          }
-        >
-          Save changes
-        </button>
-        <button
-          onClick={p.onStartDay}
-          disabled={!day || day.exercises.length === 0}
-          className="flex-[2] py-4 rounded-2xl font-bold bg-accent text-white hover:bg-accent-hov transition flex items-center justify-center gap-3 disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-          <PlayIcon size={13} color="#FFFFFF" />
-          Start Day {day?.name ?? ""}
-        </button>
-        <button
-          onClick={p.onDelete}
-          disabled={DEFAULT_PLANS.some((dp) => dp.id === p.draft.id)}
-          className="w-14 h-14 rounded-xl bg-panel border border-border text-gray-dark hover:bg-panel-dark hover:text-accent transition disabled:opacity-40 disabled:cursor-not-allowed"
-          title="Delete plan"
-          aria-label="Delete plan"
-        >
-          🗑
-        </button>
+      {/* Sticky footer — the one primary action */}
+      <div className="shrink-0 px-4 pt-2 pb-4 bg-bg border-t border-border">
+        <div className="max-w-lg mx-auto">
+          <button
+            onClick={p.onSave}
+            className="w-full min-h-[56px] rounded-2xl font-bold text-lg bg-accent text-white active:bg-accent-hov transition"
+          >
+            {p.dirty ? "Save plan" : "Saved"}
+          </button>
+        </div>
       </div>
+    </div>
+  );
+}
+
+/** Eyebrow-labelled block, with an optional right-aligned summary. */
+function Field({
+  label, aside, children,
+}: {
+  label: string; aside?: string; children: React.ReactNode;
+}) {
+  return (
+    <section>
+      <div className="flex items-baseline justify-between mb-2 px-1">
+        <span className="text-[11px] font-bold tracking-widest text-gray-dark">
+          {label}
+        </span>
+        {aside && <span className="text-xs text-gray-dark">{aside}</span>}
+      </div>
+      {children}
     </section>
   );
 }
 
-function ExerciseRow({
+function ExerciseCard({
   index, ex, autoManaged, onRemove, onSets, onReps,
 }: {
   index: number; ex: WorkoutExercise;
@@ -488,57 +543,51 @@ function ExerciseRow({
   const meta = exerciseMeta(ex.exercise);
   const tracked = isTracked(ex.exercise);
   const reps = ex.sets[0]?.[0] ?? 10;
-  const initials = ex.exercise.split(" ").map((w) => w[0]?.toUpperCase()).join("").slice(0, 1);
+  const initial = ex.exercise[0]?.toUpperCase() ?? String(index + 1);
   const bg = meta ? MUSCLE_COLORS[meta.primary] : "#E0E0E8";
 
   return (
-    <div className="bg-panel border border-border rounded-2xl px-4 py-3 flex items-center gap-4">
-      <span
-        className="w-9 h-9 rounded-lg grid place-items-center font-extrabold text-ink"
-        style={{ background: bg }}
-      >
-        {initials || (index + 1)}
-      </span>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="font-bold text-ink truncate">
-            {titleCase(ex.exercise)}
-          </span>
-          {tracked && (
-            <span className="px-1.5 py-0.5 rounded-md bg-good/15 text-good text-[10px] font-bold tracking-wider">
-              CAM
-            </span>
-          )}
-          {autoManaged && (
-            <span className="px-1.5 py-0.5 rounded-md bg-accent/10 text-accent text-[10px] font-bold tracking-wider">
-              AUTO
-            </span>
-          )}
+    <div className="bg-panel border border-border rounded-2xl p-3 shadow-card">
+      <div className="flex items-start gap-3">
+        <span
+          className="w-10 h-10 rounded-xl grid place-items-center font-extrabold text-ink shrink-0"
+          style={{ background: bg }}
+        >
+          {initial}
+        </span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-bold text-ink">{titleCase(ex.exercise)}</span>
+            {tracked && (
+              <span className="px-1.5 py-0.5 rounded-md bg-good/15 text-good text-[10px] font-bold tracking-wider">
+                CAM
+              </span>
+            )}
+            {autoManaged && (
+              <span className="px-1.5 py-0.5 rounded-md bg-accent/10 text-accent text-[10px] font-bold tracking-wider">
+                AUTO
+              </span>
+            )}
+          </div>
+          <div className="text-xs text-gray-dark mt-0.5">
+            {autoManaged ? "Sets & reps set by progression" : (meta?.primary ?? "—")}
+          </div>
         </div>
-        <div className="text-xs text-gray-dark mt-0.5">
-          {autoManaged
-            ? "Sets & reps set by progression"
-            : (meta?.primary ?? "—")}
-        </div>
+        <button
+          onClick={onRemove}
+          className="w-9 h-9 rounded-full bg-panel-dark text-gray-dark grid place-items-center shrink-0 active:text-accent transition"
+          aria-label={`Remove ${ex.exercise}`}
+        >
+          ×
+        </button>
       </div>
-      {autoManaged ? (
-        // Strategy controls sets & reps; the editor just shows the
-        // exercise is in the day. No steppers, no remove (still possible).
-        <div className="text-xs text-gray-dark px-2">cycle-driven</div>
-      ) : (
-        <>
+
+      {!autoManaged && (
+        <div className="flex gap-2 mt-3">
           <Stepper label="sets" value={ex.sets.length} onMinus={() => onSets(-1)} onPlus={() => onSets(+1)} />
-          <Stepper label="reps" value={reps}             onMinus={() => onReps(-1)} onPlus={() => onReps(+1)} />
-        </>
+          <Stepper label="reps" value={reps}           onMinus={() => onReps(-1)} onPlus={() => onReps(+1)} />
+        </div>
       )}
-      <button
-        onClick={onRemove}
-        className="w-9 h-9 rounded-lg bg-panel border border-border text-gray-dark hover:bg-panel-dark hover:text-accent transition"
-        title="Remove"
-        aria-label="Remove exercise"
-      >
-        ×
-      </button>
     </div>
   );
 }
@@ -547,11 +596,25 @@ function Stepper({ label, value, onMinus, onPlus }: {
   label: string; value: number; onMinus(): void; onPlus(): void;
 }) {
   return (
-    <div className="flex items-center bg-panel-dark rounded-full px-2 py-1 border border-border">
-      <button onClick={onMinus} className="w-6 h-6 rounded-full text-ink hover:text-accent">−</button>
-      <span className="px-2 font-bold text-ink min-w-[2.2rem] text-center">{value}</span>
-      <span className="text-[10px] text-gray-dark mr-1">{label}</span>
-      <button onClick={onPlus} className="w-6 h-6 rounded-full text-ink hover:text-accent">+</button>
+    <div className="flex-1 flex items-center justify-between bg-panel-dark rounded-full p-1">
+      <button
+        onClick={onMinus}
+        className="w-9 h-9 rounded-full bg-panel text-ink text-xl grid place-items-center shrink-0"
+        aria-label={`Decrease ${label}`}
+      >
+        −
+      </button>
+      <span className="flex items-baseline gap-1 px-1 min-w-0">
+        <span className="font-bold text-ink">{value}</span>
+        <span className="text-[10px] text-gray-dark">{label}</span>
+      </span>
+      <button
+        onClick={onPlus}
+        className="w-9 h-9 rounded-full bg-nav text-white text-xl grid place-items-center shrink-0"
+        aria-label={`Increase ${label}`}
+      >
+        +
+      </button>
     </div>
   );
 }
@@ -562,17 +625,15 @@ function ExercisePicker({
   alreadyIn: string[]; onPick(name: string): void; onClose(): void;
 }) {
   return (
-    <div
-      className="fixed inset-0 bg-black/40 grid place-items-center z-40"
-      onClick={onClose}
-    >
+    <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50" onClick={onClose}>
       <div
-        className="bg-panel rounded-3xl p-6 w-full max-w-[480px] mx-4 max-h-[80dvh] overflow-y-auto border border-border shadow-card"
+        className="bg-panel rounded-t-3xl sm:rounded-3xl p-5 w-full sm:max-w-[480px] max-h-[85dvh] overflow-y-auto border border-border shadow-card"
+        style={{ paddingBottom: "calc(1.25rem + env(safe-area-inset-bottom))" }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-baseline justify-between mb-4">
           <h2 className="text-xl font-extrabold text-ink">Add exercise</h2>
-          <button onClick={onClose} className="text-gray-dark hover:text-ink text-xl">×</button>
+          <button onClick={onClose} className="text-gray-dark text-2xl leading-none px-2">×</button>
         </div>
         <div className="flex flex-col gap-2">
           {EXERCISE_CATALOG.map((m) => {
@@ -583,19 +644,19 @@ function ExercisePicker({
                 onClick={() => onPick(m.name)}
                 disabled={inUse}
                 className={
-                  "flex items-center gap-3 px-4 py-3 rounded-xl border transition text-left " +
+                  "flex items-center gap-3 px-4 py-3 min-h-[56px] rounded-2xl border transition text-left " +
                   (inUse
                     ? "bg-panel-dark border-border opacity-50 cursor-not-allowed"
-                    : "bg-panel border-border hover:bg-panel-dark")
+                    : "bg-panel border-border active:bg-panel-dark")
                 }
               >
                 <span
-                  className="w-8 h-8 rounded-lg grid place-items-center font-extrabold text-ink"
+                  className="w-9 h-9 rounded-xl grid place-items-center font-extrabold text-ink shrink-0"
                   style={{ background: MUSCLE_COLORS[m.primary] }}
                 >
                   {m.name[0].toUpperCase()}
                 </span>
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <div className="font-bold text-ink flex items-center gap-2">
                     {titleCase(m.name)}
                     {isTracked(m.name) && (
@@ -604,34 +665,17 @@ function ExercisePicker({
                       </span>
                     )}
                   </div>
-                  <div className="text-xs text-gray-dark">
+                  <div className="text-xs text-gray-dark truncate">
                     {m.primary} · {m.equipment}
                   </div>
                 </div>
-                {inUse && <span className="text-xs text-gray-dark">Already added</span>}
+                {inUse && <span className="text-xs text-gray-dark shrink-0">Added</span>}
               </button>
             );
           })}
         </div>
       </div>
     </div>
-  );
-}
-
-function EmptyState({ onCreate }: { onCreate(): void }) {
-  return (
-    <section className="grid place-items-center">
-      <div className="text-center">
-        <div className="text-2xl font-extrabold text-ink">No plans yet</div>
-        <p className="text-gray-dark mt-2">Create your first plan to get started.</p>
-        <button
-          onClick={onCreate}
-          className="mt-5 bg-accent text-white font-bold px-6 py-3 rounded-2xl"
-        >
-          + New plan
-        </button>
-      </div>
-    </section>
   );
 }
 
