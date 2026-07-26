@@ -17,6 +17,7 @@ import { say } from "@/data/trainers/say";
 import type { LineCategory } from "@/data/trainers/trainer";
 import { repBeep, setCompleteChime, switchSideChime } from "@/audio/sfx";
 import { BackIcon } from "@/components/icons";
+import { useDismissable } from "@/hooks/useDismissable";
 
 export function Training() {
   const { session, workoutIdx, setIdx, setCursor, goTo, endSession } = useSessionStore();
@@ -260,9 +261,18 @@ export function Training() {
         style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.75rem)" }}
         aria-label="End this set"
       >
-        <div className="bg-accent rounded-full px-5 py-3 flex items-center gap-3 shadow-lg">
+        {/* `key` on the bar replays the pulse whenever a set boundary is
+            crossed (completed, or arm switched — both reset reps to 0). */}
+        <div
+          key={`bar-${workoutIdx}-${setIdx}-${side}`}
+          className="bg-accent rounded-full px-5 py-3 flex items-center gap-3 shadow-lg animate-pulse-once will-change-transform"
+        >
           <div className="text-on_accent font-extrabold text-2xl leading-none shrink-0">
-            {reps}
+            {/* Remounting on every rep restarts the pop animation — the
+                cheapest way to replay a CSS keyframe in React. */}
+            <span key={reps} className="inline-block animate-pop will-change-transform">
+              {reps}
+            </span>
             <span className="text-base font-bold opacity-80">
               {isAmrap ? "+" : `/${targetReps}`}
             </span>
@@ -314,11 +324,14 @@ function RepSegments({ done, target, amrap }: {
   return (
     <div className="flex gap-1.5 flex-1 min-w-0">
       {Array.from({ length: count }).map((_, i) => (
+        // Always the same fill colour, toggled by opacity rather than
+        // swapping background-color: opacity is composited, so the fill
+        // animates without a paint on the inference thread's critical path.
         <div
           key={i}
           className={
-            "flex-1 h-4 rounded-full min-w-0 " +
-            (i < filled ? "bg-on_accent" : "bg-white/30")
+            "flex-1 h-4 rounded-full min-w-0 bg-on_accent transition-opacity duration-200 " +
+            (i < filled ? "opacity-100" : "opacity-30")
           }
         />
       ))}
@@ -482,15 +495,29 @@ function MenuSheet({ exercise, setIdx, totalSets, weight, onWeight, onEndWorkout
 function Backdrop({ children, onClose, align = "center" }: {
   children: React.ReactNode; onClose(): void; align?: "center" | "bottom";
 }) {
+  const { closing, dismiss } = useDismissable(onClose);
   return (
     <div
-      onClick={onClose}
+      onClick={dismiss}
       className={
         "fixed inset-0 z-50 bg-black/50 flex justify-center " +
+        (closing ? "animate-fade-out " : "animate-fade-in ") +
         (align === "bottom" ? "items-end" : "items-center p-4")
       }
     >
-      {children}
+      {/* The panel animates, the backdrop only fades. `contents` keeps the
+          child a direct flex item of the backdrop so layout is unchanged; the
+          panel stops its own click propagation already. */}
+      <div
+        className={
+          "contents " +
+          (align === "bottom"
+            ? closing ? "[&>*]:animate-sheet-down" : "[&>*]:animate-sheet-up"
+            : closing ? "[&>*]:animate-dialog-out" : "[&>*]:animate-dialog-in")
+        }
+      >
+        {children}
+      </div>
     </div>
   );
 }

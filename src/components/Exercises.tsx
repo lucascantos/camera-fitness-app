@@ -21,6 +21,7 @@ import { bestSetFor, lastSetFor, formatBest, type BestSet } from "@/data/athlete
 import { isFavorite, toggleFavorite } from "@/data/settings/favorites";
 import { makeSession } from "@/data/plans/plans";
 import { useSessionStore } from "@/stores/sessionStore";
+import { useDismissable } from "@/hooks/useDismissable";
 import { PlayIcon, FilterIcon, SortIcon } from "@/components/icons";
 
 type SortMode = "az" | "best" | "favorite";
@@ -183,7 +184,7 @@ export function Exercises() {
       {sheetOpen && (
         <FilterSheet
           value={filters}
-          onApply={(f) => { setFilters(f); setSheetOpen(false); }}
+          onApply={setFilters}
           onClose={() => setSheetOpen(false)}
         />
       )}
@@ -204,11 +205,21 @@ function FilterSheet({
 }) {
   // Edited as a draft so backing out with × leaves the list untouched.
   const [draft, setDraft] = useState<Filters>(value);
+  const { closing, dismiss } = useDismissable(onClose);
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 flex items-end" onClick={onClose}>
+    <div
+      className={
+        "fixed inset-0 z-50 bg-black/40 flex items-end " +
+        (closing ? "animate-fade-out" : "animate-fade-in")
+      }
+      onClick={dismiss}
+    >
       <div
-        className="w-full bg-bg rounded-t-3xl max-h-[85dvh] overflow-y-auto"
+        className={
+          "w-full bg-bg rounded-t-3xl max-h-[85dvh] overflow-y-auto " +
+          (closing ? "animate-sheet-down" : "animate-sheet-up")
+        }
         style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -220,7 +231,7 @@ function FilterSheet({
         <div className="px-5 pb-2 flex items-center justify-between">
           <h2 className="text-xl font-extrabold text-ink">Filters</h2>
           <button
-            onClick={onClose}
+            onClick={dismiss}
             className="w-9 h-9 rounded-full bg-panel border border-border grid place-items-center text-gray-dark text-xl leading-none"
             aria-label="Close filters"
           >
@@ -280,7 +291,9 @@ function FilterSheet({
           </Group>
 
           <button
-            onClick={() => onApply(draft)}
+            // Commit immediately, then play the sheet out — the filtered list
+            // is already visible behind it as it slides away.
+            onClick={() => { onApply(draft); dismiss(); }}
             className="w-full min-h-[56px] rounded-2xl font-bold text-lg bg-accent text-white active:bg-accent-hov transition mt-1"
           >
             Apply filters

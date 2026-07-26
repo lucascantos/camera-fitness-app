@@ -10,6 +10,7 @@ import { POSE_STYLES } from "@/tracking/poseRenderer";
 import { TRAINERS } from "@/data/trainers";
 import { setTrainer, say, currentTrainer } from "@/data/trainers/say";
 import { TrainerAvatar } from "@/components/trainer/TrainerAvatar";
+import { useDismissable } from "@/hooks/useDismissable";
 
 const WEIGHT_STEPS = [0.5, 1.0, 2.5, 5.0];
 
@@ -17,6 +18,7 @@ export function QuickSettings({ onClose }: { onClose(): void }) {
   const [, force] = useState({});
   const s = getSettings();
   const active = currentTrainer();
+  const { closing, dismiss } = useDismissable(onClose, 180);
   const set = async (patch: Parameters<typeof updateSettings>[0]) => {
     await updateSettings(patch);
     force({});
@@ -25,17 +27,23 @@ export function QuickSettings({ onClose }: { onClose(): void }) {
   return (
     // Backdrop — clicking it closes.
     <div
-      onClick={onClose}
-      className="fixed inset-0 z-50 grid place-items-center bg-ink/50"
+      onClick={dismiss}
+      className={
+        "fixed inset-0 z-50 grid place-items-center bg-ink/50 " +
+        (closing ? "animate-fade-out" : "animate-fade-in")
+      }
     >
       {/* Dialog — stopPropagation so inner clicks don't bubble to backdrop. */}
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative bg-panel rounded-3xl shadow-card border border-border p-6 max-w-md w-full mx-4 max-h-[85vh] overflow-y-auto"
+        className={
+          "relative bg-panel rounded-3xl shadow-card border border-border p-6 max-w-md w-full mx-4 max-h-[85vh] overflow-y-auto " +
+          (closing ? "animate-dialog-out" : "animate-dialog-in")
+        }
       >
         {/* Close ✕ */}
         <button
-          onClick={onClose}
+          onClick={dismiss}
           aria-label="Close"
           title="Close"
           className="absolute top-3 right-3 w-9 h-9 rounded-full grid place-items-center text-gray-dark hover:text-ink hover:bg-panel-dark transition"

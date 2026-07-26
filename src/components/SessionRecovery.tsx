@@ -3,6 +3,7 @@
 // Dismiss via the ✕ in the corner or by clicking the backdrop.
 
 import { useSessionStore } from "@/stores/sessionStore";
+import { useDismissable } from "@/hooks/useDismissable";
 import { PlayIcon } from "@/components/icons";
 
 function titleCase(s: string) {
@@ -11,6 +12,8 @@ function titleCase(s: string) {
 
 export function SessionRecovery({ onDismiss }: { onDismiss(): void }) {
   const { session, workoutIdx, setIdx, goTo, endSession } = useSessionStore();
+  // Called above the early return so the hook order stays stable.
+  const { closing, dismiss } = useDismissable(onDismiss, 180);
   if (!session) return null;
 
   const workout = session.workouts[workoutIdx];
@@ -21,17 +24,23 @@ export function SessionRecovery({ onDismiss }: { onDismiss(): void }) {
   return (
     // Backdrop — clicking it dismisses.
     <div
-      onClick={onDismiss}
-      className="fixed inset-0 z-50 grid place-items-center bg-ink/50"
+      onClick={dismiss}
+      className={
+        "fixed inset-0 z-50 grid place-items-center bg-ink/50 " +
+        (closing ? "animate-fade-out" : "animate-fade-in")
+      }
     >
       {/* Dialog — stopPropagation so inner clicks don't bubble to backdrop. */}
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative bg-panel rounded-3xl shadow-card border border-border p-8 max-w-md w-full mx-4"
+        className={
+          "relative bg-panel rounded-3xl shadow-card border border-border p-8 max-w-md w-full mx-4 " +
+          (closing ? "animate-dialog-out" : "animate-dialog-in")
+        }
       >
         {/* Close ✕ in the corner */}
         <button
-          onClick={onDismiss}
+          onClick={dismiss}
           aria-label="Close"
           title="Close"
           className="absolute top-3 right-3 w-9 h-9 rounded-full grid place-items-center text-gray-dark hover:text-ink hover:bg-panel-dark transition"

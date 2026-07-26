@@ -34,6 +34,7 @@ import {
   MUSCLE_COLORS,
 } from "@/data/exercises/catalog";
 import { useSessionStore } from "@/stores/sessionStore";
+import { useDismissable } from "@/hooks/useDismissable";
 import { BackIcon, PlayIcon } from "@/components/icons";
 
 const PROGRESSIONS: { id: ProgressionId; label: string }[] = [
@@ -96,8 +97,11 @@ export function Plans() {
     setIsNew(false);
   };
 
+  // Split from closeEditor so the editor can ask *before* playing its exit
+  // animation — a cancelled confirm must leave the screen exactly as it was.
+  const canCloseEditor = () => !dirty || confirm("Discard unsaved changes?");
+
   const closeEditor = () => {
-    if (dirty && !confirm("Discard unsaved changes?")) return;
     setDraft(null);
     setSelectedId(null);
     setIsNew(false);
@@ -228,6 +232,7 @@ export function Plans() {
           activeDayIdx={activeDayIdx}
           isActive={draft.id === effectiveActiveId}
           dirty={dirty}
+          canClose={canCloseEditor}
           onClose={closeEditor}
           onPatchDraft={patchDraft}
           onSelectDay={setActiveDayIdx}
@@ -332,6 +337,8 @@ interface EditorProps {
   activeDayIdx: number;
   isActive: boolean;
   dirty: boolean;
+  /** Runs the unsaved-changes guard; false aborts the dismissal. */
+  canClose(): boolean;
   onClose(): void;
   onPatchDraft(p: Partial<Plan>): void;
   onSelectDay(i: number): void;
@@ -354,13 +361,23 @@ function PlanEditor(p: EditorProps) {
   const managed = getStrategy(p.draft.progression).managedExercises?.(p.draft)
     ?? new Set<string>();
   const isDefault = DEFAULT_PLANS.some((dp) => dp.id === p.draft.id);
+  // Slides in like a pushed route. The unsaved-changes confirm runs inside
+  // onClose, so a cancelled dismissal would still have played the exit —
+  // hence the guard is checked before dismiss() is called.
+  const { closing, dismiss } = useDismissable(p.onClose, 200);
+  const close = () => { if (p.canClose()) dismiss(); };
 
   return (
-    <div className="fixed inset-0 z-40 bg-bg flex flex-col safe-area">
+    <div
+      className={
+        "fixed inset-0 z-40 bg-bg flex flex-col safe-area " +
+        (closing ? "animate-page-out" : "animate-page-in")
+      }
+    >
       {/* Header — back + title */}
       <header className="flex items-center gap-3 px-4 py-3 shrink-0">
         <button
-          onClick={p.onClose}
+          onClick={close}
           className="w-11 h-11 rounded-full bg-panel border border-border grid place-items-center text-ink shrink-0"
           aria-label="Back to plans"
         >
@@ -624,16 +641,26 @@ function ExercisePicker({
 }: {
   alreadyIn: string[]; onPick(name: string): void; onClose(): void;
 }) {
+  const { closing, dismiss } = useDismissable(onClose);
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50" onClick={onClose}>
+    <div
+      className={
+        "fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50 " +
+        (closing ? "animate-fade-out" : "animate-fade-in")
+      }
+      onClick={dismiss}
+    >
       <div
-        className="bg-panel rounded-t-3xl sm:rounded-3xl p-5 w-full sm:max-w-[480px] max-h-[85dvh] overflow-y-auto border border-border shadow-card"
+        className={
+          "bg-panel rounded-t-3xl sm:rounded-3xl p-5 w-full sm:max-w-[480px] max-h-[85dvh] overflow-y-auto border border-border shadow-card " +
+          (closing ? "animate-sheet-down sm:animate-fade-out" : "animate-sheet-up sm:animate-fade-in")
+        }
         style={{ paddingBottom: "calc(1.25rem + env(safe-area-inset-bottom))" }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-baseline justify-between mb-4">
           <h2 className="text-xl font-extrabold text-ink">Add exercise</h2>
-          <button onClick={onClose} className="text-gray-dark text-2xl leading-none px-2">×</button>
+          <button onClick={dismiss} className="text-gray-dark text-2xl leading-none px-2">×</button>
         </div>
         <div className="flex flex-col gap-2">
           {EXERCISE_CATALOG.map((m) => {

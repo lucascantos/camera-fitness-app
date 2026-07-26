@@ -17,6 +17,7 @@ import {
 } from "@/data/athlete/athlete";
 import { TRACKED_EXERCISES } from "@/tracking/exercises/registry";
 import { getSettings } from "@/data/settings/settings";
+import { useDismissable } from "@/hooks/useDismissable";
 import { BackIcon } from "@/components/icons";
 
 type View =
@@ -111,6 +112,8 @@ function HistoryEditor({ index, initial, isNew, onClose, onChanged }: {
   const [draft, setDraft] = useState<HistoryEntry>(() => structuredClone(initial));
   const [newExercise, setNewExercise] = useState("");
   const [saving, setSaving] = useState(false);
+  // Slides in like a pushed route; save/delete close through the same exit.
+  const { closing, dismiss } = useDismissable(onClose, 200);
 
   function mutate(fn: (d: HistoryEntry) => void) {
     setDraft((prev) => {
@@ -169,7 +172,7 @@ function HistoryEditor({ index, initial, isNew, onClose, onChanged }: {
     }
     setSaving(false);
     onChanged();
-    onClose();
+    dismiss();
   }
 
   async function removeWorkout() {
@@ -177,15 +180,20 @@ function HistoryEditor({ index, initial, isNew, onClose, onChanged }: {
     if (!confirm("Delete this entire workout? This can’t be undone.")) return;
     await deleteHistoryEntry(index);
     onChanged();
-    onClose();
+    dismiss();
   }
 
   return (
-    <div className="fixed inset-0 z-40 bg-bg flex flex-col safe-area">
+    <div
+      className={
+        "fixed inset-0 z-40 bg-bg flex flex-col safe-area " +
+        (closing ? "animate-page-out" : "animate-page-in")
+      }
+    >
       {/* Header — back · date · delete */}
       <header className="flex items-center gap-3 px-4 py-3 shrink-0">
         <button
-          onClick={onClose}
+          onClick={dismiss}
           className="w-11 h-11 rounded-full bg-panel border border-border grid place-items-center text-ink shrink-0"
           aria-label="Back to history"
         >
@@ -274,7 +282,7 @@ function HistoryEditor({ index, initial, isNew, onClose, onChanged }: {
             {saving ? "Saving…" : isNew ? "Add workout" : "Save changes"}
           </button>
           <button
-            onClick={onClose}
+            onClick={dismiss}
             className="flex-1 min-h-[56px] rounded-2xl font-bold bg-panel border border-border text-ink active:bg-panel-dark transition"
           >
             Cancel
