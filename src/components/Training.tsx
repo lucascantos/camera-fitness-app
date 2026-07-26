@@ -1,7 +1,9 @@
 // Ported from: scenes/training.py (legacy FitnessApp repo)
-// Live training scene: camera + rep counter + reps/weight/rest controls.
+// Live training scene — mobile-first redesign: the camera fills the screen and
+// all controls live in overlays (top bar, bottom rep bar) or on-demand sheets,
+// so nothing competes with the feed the user is actually posing against.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { PoseLandmarkerResult } from "@mediapipe/tasks-vision";
 import { useCamera } from "@/hooks/useCamera";
 import { useMediapipe } from "@/hooks/useMediapipe";
@@ -9,33 +11,15 @@ import { getTracker } from "@/tracking/exercises/registry";
 import type { ExerciseTracker, Side } from "@/tracking/exercises/types";
 import { createPoseRenderer } from "@/tracking/poseRenderer";
 import { useSessionStore } from "@/stores/sessionStore";
+import type { Session } from "@/data/plans/plans";
 import { getSettings, updateSettings } from "@/data/settings/settings";
 import { say } from "@/data/trainers/say";
 import type { LineCategory } from "@/data/trainers/trainer";
 import { repBeep, setCompleteChime, switchSideChime } from "@/audio/sfx";
-import { useTrainerStore } from "@/stores/trainerStore";
 import { BackIcon } from "@/components/icons";
-import { QuickSettings } from "@/components/QuickSettings";
-
-// Joint label per exercise — drives the status-bar sub line.
-const JOINT_BY_EXERCISE: Record<string, string> = {
-  "bicep curl":     "Elbow",
-  "push ups":       "Elbow",
-  "bench press":    "Elbow",
-  "overhead press": "Elbow",
-  "barbell row":    "Elbow",
-  "squat":          "Knee",
-  "deadlift":       "Hip",
-  "lateral raise":  "Shoulder",
-  "one arm triceps extension": "Elbow",
-};
-
-// How long a trainer line lives in the status bar before the fallback
-// (exercise name) reappears.
-const TRAINER_LINE_TTL_MS = 4000;
 
 export function Training() {
-  const { session, workoutIdx, setIdx, setCursor, goTo } = useSessionStore();
+  const { session, workoutIdx, setIdx, setCursor, goTo, endSession } = useSessionStore();
   const { videoRef, error: camError } = useCamera();
 
   const workout = session?.workouts[workoutIdx];
@@ -50,31 +34,16 @@ export function Training() {
   const canvasRef  = useRef<HTMLCanvasElement | null>(null);
   const poseRendererRef = useRef(createPoseRenderer());
   const [reps, setReps] = useState(0);
-  const [angle, setAngle] = useState<number | null>(null);
-  const [formError, setFormError] = useState<string | null>(null);
-  const [showQuickSettings, setShowQuickSettings] = useState(false);
+  const [sheet, setSheet] = useState<null | "menu" | "set">(null);
   // For unilateral exercises (one-arm): which arm is currently being counted.
   // "right" first, then "left"; the set advances only after both are done.
   const [side, setSide] = useState<Side>("right");
   const lastRepRef = useRef(0);
-  const lastAngleTsRef = useRef(0);
-
-  // Live trainer line — fades back to the exercise name after TTL.
-  const trainerText = useTrainerStore((s) => s.text);
-  const trainerTick = useTrainerStore((s) => s.tick);
-  const [statusLine, setStatusLine] = useState<string>("");
-  useEffect(() => {
-    if (!trainerText || !getSettings().trainerEnabled) return;
-    setStatusLine(trainerText);
-    const id = setTimeout(() => setStatusLine(""), TRAINER_LINE_TTL_MS);
-    return () => clearTimeout(id);
-  }, [trainerTick, trainerText]);
 
   useEffect(() => {
     const tk = getTracker(exercise);
     trackerRef.current = tk;
     setReps(0);
-    setFormError(null);
     lastRepRef.current = 0;
     // Unilateral exercises always start on the right arm.
     setSide("right");
@@ -146,15 +115,6 @@ export function Training() {
     const t = trackerRef.current;
     if (!t || !screenLms) return;
     const c = t.feed(screenLms, worldLms);
-    // Throttle angle state updates to ~10fps — the overlay is drawn directly
-    // on the canvas, so this only governs the status-bar number and keeps
-    // per-frame React re-renders from competing with inference.
-    const nowMs = performance.now();
-    if (nowMs - lastAngleTsRef.current > 100) {
-      lastAngleTsRef.current = nowMs;
-      setAngle(t.angle);
-      setFormError(t.formError ?? null);
-    }
     if (c !== lastRepRef.current) {
       // Unilateral: after the right arm hits target, switch to the left and
       // keep the set open. The set only advances once both arms are done. This
@@ -168,14 +128,17 @@ export function Training() {
         setSide("left");
         lastRepRef.current = 0;
         setReps(0);
-        setStatusLine("Switch to your left arm!");
       } else {
         onRep(c, targetReps, isAmrap);
         lastRepRef.current = c;
         setReps(c);
         if (!isAmrap && c >= targetReps && getSettings().autoRest) {
-          // tiny delay so the set-complete line gets a beat to play
-          setTimeout(() => advance(), 600);
+          // tiny delay so the set-complete line gets a beat to play.
+          // Via ref: this callback is memoised and would otherwise close over
+          // a stale finishSet (and therefore a stale setIdx) whenever
+          // consecutive sets share the same reps/weight — which would write
+          // the actuals onto the wrong set.
+          setTimeout(() => finishSetRef.current(c), 600);
         }
       }
     }
@@ -183,8 +146,20 @@ export function Training() {
 
   const { ready: mpReady, error: mpError, lowPerf } = useMediapipe(videoRef, onResult, !!trackerRef.current);
 
-  function advance() {
+  // Record what was actually performed, then move on. `repsDone` is written
+  // into the set's actuals slot so Complete.tsx (coins/history) and the
+  // progression strategies score the real effort instead of assuming the
+  // prescription was hit exactly.
+  // Always points at the current render's finishSet — see the auto-advance
+  // call in onResult above.
+  const finishSetRef = useRef<(reps: number) => void>(() => {});
+  finishSetRef.current = finishSet;
+
+  function finishSet(repsDone: number) {
     if (!session || !workout) return;
+    recordActuals(session, workoutIdx, setIdx, { reps: repsDone, weight });
+    setSheet(null);
+
     const totalSets = workout.sets.length;
     const totalEx   = session.workouts.length;
     if (setIdx + 1 < totalSets) {
@@ -201,7 +176,6 @@ export function Training() {
     }
   }
 
-  const display = trackerRef.current ? reps : targetReps;
   const isUnilateral = trackerRef.current?.unilateral ?? false;
 
   // Manually finish the current arm and move to the other (mirrors the
@@ -213,210 +187,341 @@ export function Training() {
     setSide("left");
     lastRepRef.current = 0;
     setReps(0);
-    setFormError(null);
     switchSideChime();
-    setStatusLine("Switch to your left arm!");
+    setSheet(null);
   }
 
   return (
-    // Mobile: single column that scrolls (camera on top, controls below).
-    // lg+: the original side-by-side grid pinned to the viewport height.
-    <div className="flex flex-col gap-3 p-3 lg:grid lg:grid-cols-[1fr_460px] lg:gap-4 lg:p-4 lg:h-full">
-      {/* Camera card */}
-      <div className="bg-panel-dark rounded-3xl p-3 lg:p-4 flex flex-col">
-        {/* Fixed viewport-relative height on mobile (flex-1 has no bounded
-            parent there); fills the card on desktop. */}
-        <div className="relative bg-panel rounded-2xl overflow-hidden h-[55dvh] lg:h-auto lg:flex-1">
-          <video
-            ref={videoRef}
-            muted
-            playsInline
-            className="absolute inset-0 w-full h-full object-cover"
-            style={{ transform: "scaleX(-1)" }}
-          />
-          {/* Pose skeleton overlay — same mirror + object-cover as the
-              video so the dots sit on the user even when the container's
-              aspect ratio differs from the camera's. pointer-events none
-              so clicks fall through. */}
-          <canvas
-            ref={canvasRef}
-            className="absolute inset-0 w-full h-full pointer-events-none"
-            style={{ transform: "scaleX(-1)" }}
-          />
-          {camError && (
-            <div className="absolute inset-0 grid place-items-center text-red-300">
-              Camera error: {camError}
-            </div>
-          )}
-          {mpError && (
-            <div className="absolute top-3 left-3 px-3 py-1 bg-red-600/80 rounded-full text-sm text-white">
-              Pose model error: {mpError}
-            </div>
-          )}
-          {trackerRef.current && !mpReady && !mpError && (
-            <div className="absolute top-3 left-3 px-3 py-1 bg-bg/80 rounded-full text-sm">
-              Loading pose model…
-            </div>
-          )}
-          {lowPerf && mpReady && (
-            <div className="absolute top-3 right-3 px-3 py-1 bg-coin/90 text-white rounded-full text-xs font-semibold">
-              Low performance — reduced tracking quality
-            </div>
-          )}
-          {!trackerRef.current && (
-            <div className="absolute bottom-3 left-3 px-3 py-1 bg-bg/80 rounded-full text-sm">
-              Manual mode — tap Set complete when done
-            </div>
+    <div className="fixed inset-0 bg-black overflow-hidden">
+      {/* Camera fills the whole screen; the skeleton overlay uses the same
+          mirror + cover transform so the dots land on the user. */}
+      <video
+        ref={videoRef}
+        muted
+        playsInline
+        className="absolute inset-0 w-full h-full object-cover"
+        style={{ transform: "scaleX(-1)" }}
+      />
+      <canvas
+        ref={canvasRef}
+        className="absolute inset-0 w-full h-full pointer-events-none"
+        style={{ transform: "scaleX(-1)" }}
+      />
+
+      {/* Scrim behind the top/bottom chrome so white text stays legible over
+          a bright camera feed. */}
+      <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/50 to-transparent pointer-events-none" />
+
+      {/* ── Top bar: back · set counter · menu ── */}
+      <div
+        className="absolute inset-x-0 top-0 flex items-center justify-between px-4"
+        style={{ paddingTop: "calc(env(safe-area-inset-top) + 0.75rem)" }}
+      >
+        <RoundButton onClick={() => goTo("home")} label="Back to menu">
+          <BackIcon size={20} />
+        </RoundButton>
+        <div className="text-white font-bold text-lg drop-shadow">
+          Set {setIdx + 1}
+          {isUnilateral && (
+            <span className="font-semibold opacity-80">
+              {side === "right" ? " · Right" : " · Left"}
+            </span>
           )}
         </div>
-        {/* Status bar — trainer's current line in bold, joint feedback
-            underneath, angle pill on the right. Matches the legacy
-            white-pill toast pattern. */}
-        <div className="mt-3 bg-panel rounded-2xl p-3 flex items-center gap-3 shadow-card border border-border">
-          <div className="w-10 h-10 rounded-full bg-good grid place-items-center text-white text-lg shrink-0">
-            ↻
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="font-bold text-ink truncate">
-              {statusLine || titleCase(exercise)}
-            </div>
-            <div className={"text-sm truncate " + (formError ? "text-accent font-semibold" : "text-gray-dark")}>
-              {formError
-                ? `⚠ ${formError}`
-                : angle != null
-                  ? `${JOINT_BY_EXERCISE[exercise] ?? "Joint"} at ${Math.round(angle)}° — keep it tight`
-                  : trackerRef.current
-                    ? "Move into frame so I can see you"
-                    : "Manual mode — tap Set complete when done"}
-            </div>
-          </div>
-          {angle != null && (
-            <div className="px-3 py-1 rounded-full bg-coin text-white font-bold shrink-0">
-              {Math.round(angle)}°
-            </div>
-          )}
-        </div>
+        <RoundButton onClick={() => setSheet("menu")} label="Workout controls">
+          <MenuIcon />
+        </RoundButton>
       </div>
 
-      {/* Right column */}
-      <div className="flex flex-col gap-3">
-        {/* Header: back + exercise title + settings gear */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 min-w-0">
-            <button
-              onClick={() => goTo("home")}
-              className="w-10 h-10 rounded-xl bg-panel border border-border grid place-items-center text-gray-dark hover:bg-panel-dark transition shrink-0"
-              title="Back to menu"
-            >
-              <BackIcon size={20} />
-            </button>
-            <div className="text-lg font-bold truncate">{titleCase(exercise)}</div>
-          </div>
-          <button
-            onClick={() => setShowQuickSettings(true)}
-            className="w-10 h-10 rounded-xl bg-panel border border-border grid place-items-center text-gray-dark hover:bg-panel-dark transition"
-            title="Quick settings"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
-          </button>
-        </div>
-
-        {/* Reps */}
-        <div className="bg-accent rounded-3xl p-5 text-on_accent">
-          <div className="text-xs font-bold tracking-widest opacity-80">
-            {isUnilateral ? (side === "right" ? "RIGHT ARM · " : "LEFT ARM · ") : ""}
-            {isAmrap ? "AMRAP · REPS DONE" : "REPS DONE"}
-          </div>
-          <div className="flex items-baseline">
-            <div className="text-6xl font-extrabold">{display}</div>
-            <div className="text-2xl font-bold ml-2">
-              {isAmrap ? "+" : `/${targetReps}`}
-            </div>
-          </div>
-          <ProgressBar value={display} target={targetReps} amrap={isAmrap} />
-        </div>
-
-        {/* Set chips */}
-        <div className="bg-panel rounded-2xl p-4 border border-border">
-          <div className="text-xs font-bold tracking-widest text-gray-dark mb-2">
-            SET {setIdx + 1} OF {workout?.sets.length ?? 0}
-          </div>
-          <div className="flex gap-2">
-            {workout?.sets.map((s, i) => {
-              const amrap = Boolean(s[2]);
-              const cls =
-                i === setIdx ? "bg-accent text-on_accent" :
-                i <  setIdx ? "bg-good   text-on_accent" :
-                              "bg-panel-dark text-gray-dark";
-              return (
-                <div key={i} className={`flex-1 h-10 rounded-lg grid place-items-center font-bold ${cls}`}>
-                  {amrap ? "A" : i + 1}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Weight */}
-        <Stepper
-          label="WEIGHT"
-          suffix={weight === 0 ? "" : "kg"}
-          value={weight === 0 ? "bodyweight" : String(weight)}
-          onMinus={() => mutateSet(session, workoutIdx, setIdx, 1, (v) => Math.max(0, +v - getSettings().weightStep))}
-          onPlus ={() => mutateSet(session, workoutIdx, setIdx, 1, (v) => Math.min(500, +v + getSettings().weightStep))}
-        />
-
-        {/* Rest */}
-        <Stepper
-          label="REST"
-          suffix="s"
-          value={String(getSettings().restSeconds)}
-          onMinus={() => updateSettings({ restSeconds: Math.max(5,   getSettings().restSeconds - 15) })}
-          onPlus ={() => updateSettings({ restSeconds: Math.min(600, getSettings().restSeconds + 15) })}
-        />
-
-        {/* Done button — dark ink fill with white text, matching legacy.
-            For unilateral exercises on the first (right) arm it becomes a
-            manual "Switch arm" control so the set isn't ended early. */}
-        {isUnilateral && side === "right" ? (
-          <button
-            onClick={switchToOtherArm}
-            className="mt-auto bg-nav text-white font-bold py-4 rounded-2xl text-lg hover:bg-ink transition flex items-center justify-center gap-3"
-          >
-            <span className="text-xl">⇄</span> Switch arm
-          </button>
-        ) : (
-          <button
-            onClick={advance}
-            className="mt-auto bg-nav text-white font-bold py-4 rounded-2xl text-lg hover:bg-ink transition flex items-center justify-center gap-3"
-          >
-            <span className="text-xl">✓</span> Set complete!
-          </button>
+      {/* Status pills — only for states the user must act on. */}
+      <div
+        className="absolute inset-x-0 flex flex-col items-center gap-2 px-4"
+        style={{ top: "calc(env(safe-area-inset-top) + 4rem)" }}
+      >
+        {camError && (
+          <Pill tone="error">Camera error: {camError}</Pill>
+        )}
+        {mpError && <Pill tone="error">Pose model error: {mpError}</Pill>}
+        {trackerRef.current && !mpReady && !mpError && (
+          <Pill tone="neutral">Loading pose model…</Pill>
+        )}
+        {lowPerf && mpReady && (
+          <Pill tone="warn">Low performance — reduced tracking quality</Pill>
+        )}
+        {!trackerRef.current && (
+          <Pill tone="neutral">Manual mode — tap the counter when done</Pill>
         )}
       </div>
 
-      {showQuickSettings && (
-        <QuickSettings onClose={() => setShowQuickSettings(false)} />
+      {/* ── Bottom rep bar — tap to end the set ── */}
+      <button
+        onClick={() => setSheet("set")}
+        className="absolute inset-x-0 bottom-0 px-4"
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.75rem)" }}
+        aria-label="End this set"
+      >
+        <div className="bg-accent rounded-full px-5 py-3 flex items-center gap-3 shadow-lg">
+          <div className="text-on_accent font-extrabold text-2xl leading-none shrink-0">
+            {reps}
+            <span className="text-base font-bold opacity-80">
+              {isAmrap ? "+" : `/${targetReps}`}
+            </span>
+          </div>
+          <RepSegments done={reps} target={targetReps} amrap={isAmrap} />
+        </div>
+      </button>
+
+      {sheet === "set" && (
+        <SetSheet
+          reps={reps}
+          target={targetReps}
+          amrap={isAmrap}
+          showSwitchArm={isUnilateral && side === "right"}
+          onSwitchArm={switchToOtherArm}
+          onComplete={() => finishSet(reps)}
+          onSkip={() => finishSet(0)}
+          onClose={() => setSheet(null)}
+        />
+      )}
+
+      {sheet === "menu" && (
+        <MenuSheet
+          exercise={exercise}
+          setIdx={setIdx}
+          totalSets={workout?.sets.length ?? 0}
+          weight={weight}
+          onWeight={(fn) => {
+            if (!session) return;
+            mutateWeight(session, workoutIdx, setIdx, fn);
+          }}
+          onEndWorkout={() => { endSession(); }}
+          onClose={() => setSheet(null)}
+        />
       )}
     </div>
   );
 }
 
-function ProgressBar({ value, target, amrap }: { value: number; target: number; amrap: boolean }) {
-  if (amrap) {
-    const pct = ((value % 10) / 10) * 100;
-    return (
-      <div className="h-1.5 bg-white/30 rounded-full mt-3 overflow-hidden">
-        <div className="h-full bg-on_accent rounded-full transition-all" style={{ width: `${pct}%` }} />
-      </div>
-    );
-  }
+// ── Bottom rep bar pieces ────────────────────────────────────────────────────
+
+function RepSegments({ done, target, amrap }: {
+  done: number; target: number; amrap: boolean;
+}) {
+  // AMRAP has no ceiling, so the bar cycles every 10 reps rather than trying
+  // to render an unbounded number of segments.
+  const count = amrap ? 10 : target;
+  const filled = amrap ? done % 10 : done;
   return (
-    <div className="flex gap-1 mt-3">
-      {Array.from({ length: target }).map((_, i) => (
-        <div key={i}
-          className={`flex-1 h-1.5 rounded-full ${i < value ? "bg-on_accent" : "bg-white/30"}`} />
+    <div className="flex gap-1.5 flex-1 min-w-0">
+      {Array.from({ length: count }).map((_, i) => (
+        <div
+          key={i}
+          className={
+            "flex-1 h-4 rounded-full min-w-0 " +
+            (i < filled ? "bg-on_accent" : "bg-white/30")
+          }
+        />
       ))}
+    </div>
+  );
+}
+
+// ── Overlays ─────────────────────────────────────────────────────────────────
+
+function SetSheet({ reps, target, amrap, showSwitchArm, onSwitchArm, onComplete, onSkip, onClose }: {
+  reps: number; target: number; amrap: boolean;
+  showSwitchArm: boolean; onSwitchArm(): void;
+  onComplete(): void; onSkip(): void; onClose(): void;
+}) {
+  return (
+    <Backdrop onClose={onClose}>
+      <div
+        className="bg-panel rounded-3xl p-6 w-full max-w-sm shadow-card"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="text-center">
+          <div className="text-xl font-extrabold text-ink">End this set?</div>
+          <div className="text-gray-dark mt-1">
+            {reps} {amrap ? "reps done" : `of ${target} reps done`}
+          </div>
+        </div>
+        <div className="mt-5 flex flex-col gap-2">
+          {showSwitchArm && (
+            <button
+              onClick={onSwitchArm}
+              className="w-full py-3.5 rounded-2xl font-bold bg-good text-on_accent"
+            >
+              ⇄ Switch arm
+            </button>
+          )}
+          <button
+            onClick={onComplete}
+            className="w-full py-3.5 rounded-2xl font-bold bg-nav text-white"
+          >
+            ✓ Complete Set
+          </button>
+          {/* Skip records the set as 0 reps, so progression scores it as a
+              miss rather than silently crediting the full prescription. */}
+          <button
+            onClick={onSkip}
+            className="w-full py-3.5 rounded-2xl font-bold bg-panel text-gray-dark border border-border"
+          >
+            Skip Set
+          </button>
+        </div>
+      </div>
+    </Backdrop>
+  );
+}
+
+function MenuSheet({ exercise, setIdx, totalSets, weight, onWeight, onEndWorkout, onClose }: {
+  exercise: string; setIdx: number; totalSets: number; weight: number;
+  onWeight(fn: (v: number) => number): void;
+  onEndWorkout(): void; onClose(): void;
+}) {
+  const [, force] = useState({});
+  const [confirmEnd, setConfirmEnd] = useState(false);
+  const step = getSettings().weightStep;
+
+  return (
+    <Backdrop onClose={onClose} align="bottom">
+      <div
+        className="bg-panel rounded-t-3xl p-5 w-full max-w-lg"
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 1.25rem)" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="w-10 h-1 rounded-full bg-border mx-auto mb-4" />
+        <div className="flex items-center justify-between">
+          <div className="text-lg font-extrabold text-ink truncate">
+            {titleCase(exercise)}
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="w-9 h-9 rounded-full bg-panel-dark text-gray-dark grid place-items-center shrink-0"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="mt-4 bg-panel-dark rounded-2xl p-3">
+          <div className="text-[11px] font-bold tracking-widest text-gray-dark">
+            SET {setIdx + 1} OF {totalSets}
+          </div>
+          <div className="flex gap-1.5 mt-2">
+            {Array.from({ length: totalSets }).map((_, i) => (
+              <div
+                key={i}
+                className={
+                  "flex-1 h-9 rounded-lg grid place-items-center font-bold text-sm " +
+                  (i === setIdx ? "bg-accent text-on_accent"
+                    : i < setIdx ? "bg-good text-on_accent"
+                    : "bg-panel text-gray-dark")
+                }
+              >
+                {i + 1}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <Stepper
+          label="WEIGHT"
+          value={weight === 0 ? "bodyweight" : String(weight)}
+          suffix={weight === 0 ? "" : "kg"}
+          onMinus={() => { onWeight((v) => Math.max(0, v - step)); force({}); }}
+          onPlus={() => { onWeight((v) => Math.min(500, v + step)); force({}); }}
+        />
+        <Stepper
+          label="REST"
+          value={String(getSettings().restSeconds)}
+          suffix="s"
+          onMinus={async () => {
+            await updateSettings({ restSeconds: Math.max(5, getSettings().restSeconds - 15) });
+            force({});
+          }}
+          onPlus={async () => {
+            await updateSettings({ restSeconds: Math.min(600, getSettings().restSeconds + 15) });
+            force({});
+          }}
+        />
+
+        {confirmEnd ? (
+          <div className="mt-4 rounded-2xl border border-accent bg-accent/10 p-3">
+            <div className="text-sm font-bold text-ink">
+              End the workout? Unfinished sets won’t be recorded.
+            </div>
+            <div className="flex gap-2 mt-3">
+              <button
+                onClick={onEndWorkout}
+                className="flex-1 py-3 rounded-2xl font-bold bg-accent text-on_accent"
+              >
+                End workout
+              </button>
+              <button
+                onClick={() => setConfirmEnd(false)}
+                className="flex-1 py-3 rounded-2xl font-bold bg-panel text-gray-dark border border-border"
+              >
+                Keep going
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => setConfirmEnd(true)}
+            className="mt-4 w-full py-3 rounded-2xl font-bold text-accent border border-border"
+          >
+            End workout
+          </button>
+        )}
+      </div>
+    </Backdrop>
+  );
+}
+
+function Backdrop({ children, onClose, align = "center" }: {
+  children: React.ReactNode; onClose(): void; align?: "center" | "bottom";
+}) {
+  return (
+    <div
+      onClick={onClose}
+      className={
+        "fixed inset-0 z-50 bg-black/50 flex justify-center " +
+        (align === "bottom" ? "items-end" : "items-center p-4")
+      }
+    >
+      {children}
+    </div>
+  );
+}
+
+// ── Small shared bits ────────────────────────────────────────────────────────
+
+function RoundButton({ children, onClick, label }: {
+  children: React.ReactNode; onClick(): void; label: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      title={label}
+      aria-label={label}
+      className="w-10 h-10 rounded-full bg-black/35 backdrop-blur text-white grid place-items-center shrink-0"
+    >
+      {children}
+    </button>
+  );
+}
+
+function Pill({ children, tone }: {
+  children: React.ReactNode; tone: "error" | "warn" | "neutral";
+}) {
+  const cls =
+    tone === "error" ? "bg-red-600/85 text-white" :
+    tone === "warn"  ? "bg-coin/90 text-white" :
+                       "bg-black/55 text-white";
+  return (
+    <div className={"px-3 py-1 rounded-full text-xs font-semibold text-center " + cls}>
+      {children}
     </div>
   );
 }
@@ -425,37 +530,67 @@ function Stepper({ label, value, suffix, onMinus, onPlus }: {
   label: string; value: string; suffix: string; onMinus(): void; onPlus(): void;
 }) {
   return (
-    <div className="bg-panel rounded-2xl p-3 border border-border flex items-center">
-      <div className="flex-1">
-        <div className="text-xs font-bold tracking-widest text-gray-dark">{label}</div>
-        <div className="text-2xl font-bold mt-1">{value}{suffix && <span className="text-sm font-normal text-gray-dark"> {suffix}</span>}</div>
+    <div className="mt-3 bg-panel-dark rounded-2xl p-3 flex items-center">
+      <div className="flex-1 min-w-0">
+        <div className="text-[11px] font-bold tracking-widest text-gray-dark">{label}</div>
+        <div className="text-xl font-extrabold text-ink mt-0.5 truncate">
+          {value}
+          {suffix && <span className="text-sm font-normal text-gray-dark"> {suffix}</span>}
+        </div>
       </div>
-      <button onClick={onMinus} className="w-10 h-10 rounded-xl bg-panel-dark hover:bg-bg text-2xl">−</button>
-      <button onClick={onPlus}  className="w-10 h-10 rounded-xl bg-good ml-2 text-on_accent text-2xl">+</button>
+      <button
+        onClick={onMinus}
+        aria-label={`Decrease ${label.toLowerCase()}`}
+        className="w-11 h-11 rounded-full bg-panel text-ink text-2xl grid place-items-center shrink-0"
+      >
+        −
+      </button>
+      <button
+        onClick={onPlus}
+        aria-label={`Increase ${label.toLowerCase()}`}
+        className="w-11 h-11 rounded-full bg-good text-on_accent text-2xl ml-2 grid place-items-center shrink-0"
+      >
+        +
+      </button>
     </div>
   );
 }
 
-function mutateSet(
-  session: ReturnType<typeof useSessionStore.getState>["session"],
-  wi: number, si: number, col: 0 | 1, fn: (v: number | boolean) => number,
+function MenuIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="2.5" strokeLinecap="round">
+      <path d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+  );
+}
+
+// ── Session mutation ─────────────────────────────────────────────────────────
+
+/** Store what the athlete actually did for this set (reps + working weight). */
+function recordActuals(
+  session: Session, wi: number, si: number,
+  actuals: { reps: number; weight: number },
 ) {
-  if (!session) return;
+  session.workouts[wi].sets[si][3] = actuals;
+  useSessionStore.setState({ session: { ...session } });
+}
+
+function mutateWeight(
+  session: Session, wi: number, si: number, fn: (v: number) => number,
+) {
   const sets = session.workouts[wi].sets;
-  const prev = sets[si][col] as number;
+  const prev = sets[si][1];
   const next = fn(prev);
-  sets[si][col] = next as never;
+  sets[si][1] = next;
   // Weight changes carry forward to later sets that shared this set's previous
   // load, so dialing in the weight on set 1 of a same-weight scheme (e.g. a
   // linear 3×10 that started at bodyweight) applies to every following set
   // instead of leaving them at the old value. Sets that intentionally differ
   // (5/3/1's 65/75/85 %, BBB back-off sets) keep their own weights.
-  if (col === 1) {
-    for (let i = si + 1; i < sets.length; i++) {
-      if ((sets[i][col] as number) === prev) sets[i][col] = next as never;
-    }
+  for (let i = si + 1; i < sets.length; i++) {
+    if (sets[i][1] === prev) sets[i][1] = next;
   }
-  // Force a re-render via store mutation.
   useSessionStore.setState({ session: { ...session } });
 }
 
