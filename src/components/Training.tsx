@@ -16,12 +16,19 @@ import { getSettings, updateSettings } from "@/data/settings/settings";
 import { say } from "@/data/trainers/say";
 import type { LineCategory } from "@/data/trainers/trainer";
 import { repBeep, setCompleteChime, switchSideChime } from "@/audio/sfx";
-import { BackIcon } from "@/components/icons";
+import { BackIcon, GearIcon } from "@/components/icons";
+import { QuickSettings } from "@/components/QuickSettings";
 import { useDismissable } from "@/hooks/useDismissable";
+import { POSE_MODEL_URL } from "@/hooks/useMediapipe";
+import { getDebugOptions, isDebugLogging } from "@/tracking/log/flag";
+import * as logRecorder from "@/tracking/log/recorder";
+import type { FrameMeta, ImageStats } from "@/tracking/log/types";
+import { DebugTrace } from "@/components/DebugTrace";
+import { openingThresholds } from "@/tracking/exercises/registry";
 
 export function Training() {
   const { session, workoutIdx, setIdx, setCursor, goTo, endSession } = useSessionStore();
-  const { videoRef, error: camError } = useCamera();
+  const { videoRef, stream, error: camError } = useCamera();
 
   const workout = session?.workouts[workoutIdx];
   const setRow  = workout?.sets[setIdx];
@@ -35,11 +42,19 @@ export function Training() {
   const canvasRef  = useRef<HTMLCanvasElement | null>(null);
   const poseRendererRef = useRef(createPoseRenderer());
   const [reps, setReps] = useState(0);
-  const [sheet, setSheet] = useState<null | "menu" | "set">(null);
+  const [sheet, setSheet] = useState<null | "menu" | "set" | "settings">(null);
   // For unilateral exercises (one-arm): which arm is currently being counted.
   // "right" first, then "left"; the set advances only after both are done.
   const [side, setSide] = useState<Side>("right");
   const lastRepRef = useRef(0);
+
+  // ── Tracking diagnostics (dev-only; see src/tracking/log/) ──
+  // Off by default: the recorder short-circuits on a flag check, and these
+  // refs stay null. When on, they mirror the latest frame for the overlay so
+  // it can read them without a React update per frame.
+  const [debugOn, setDebugOn] = useState(isDebugLogging);
+  const imageStatsRef = useRef<ImageStats | null>(null);
+  const frameTimingRef = useRef({ fps: 0, dtMs: 0, skip: 0 });
 
   useEffect(() => {
     const tk = getTracker(exercise);
@@ -51,6 +66,34 @@ export function Training() {
     tk?.setSide?.("right");
     say("intro", exercise);
   }, [exercise]);
+
+  // Open a fresh recording per set. Keyed on the set cursor and the active
+  // side, since a unilateral side switch restarts the count and so should be
+  // a separate trace. An abandoned set (navigating away) is simply dropped.
+  useEffect(() => {
+    if (!debugOn || !workout) return;
+    logRecorder.beginSet({
+      video: videoRef.current,
+      stream,
+      exercise,
+      targetReps,
+      weight,
+      isAmrap,
+      side: trackerRef.current?.unilateral ? side : null,
+      unilateral: trackerRef.current?.unilateral ?? false,
+      workoutIdx,
+      setIdx,
+      poseModel: POSE_MODEL_URL,
+      // Without this a trace can't be read back: the same angles mean
+      // different things under different thresholds. These are the *opening*
+      // values only — the tracker adapts away from them during the set.
+      calibration: openingThresholds(exercise),
+    });
+    return () => { logRecorder.abortSet(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debugOn, exercise, workoutIdx, setIdx, side, stream]);
+
+  useEffect(() => () => logRecorder.teardown(), []);
 
   // Voice-line + SFX trigger on rep changes.
   const onRep = useCallback((r: number, target: number, amrap: boolean) => {
@@ -74,7 +117,7 @@ export function Training() {
   }, []);
 
   // MediaPipe — fires once per frame with landmarks.
-  const onResult = useCallback((res: PoseLandmarkerResult) => {
+  const onResult = useCallback((res: PoseLandmarkerResult, _ts: number, meta: FrameMeta) => {
     const screenLms = res.landmarks?.[0];
     const worldLms  = res.worldLandmarks?.[0] ?? null;
 
@@ -114,8 +157,23 @@ export function Training() {
 
     // ── Rep counter ──
     const t = trackerRef.current;
-    if (!t || !screenLms) return;
+    if (!t || !screenLms) {
+      // A frame with no pose at all is itself a finding — the user stepped out
+      // of shot, or detection dropped — so it still goes in the trace.
+      if (isDebugLogging()) {
+        frameTimingRef.current = { fps: meta.fps, dtMs: meta.dtMs, skip: meta.skip };
+        logRecorder.recordFrame(null, null, null, lastRepRef.current, meta);
+      }
+      return;
+    }
     const c = t.feed(screenLms, worldLms);
+
+    if (isDebugLogging()) {
+      frameTimingRef.current = { fps: meta.fps, dtMs: meta.dtMs, skip: meta.skip };
+      logRecorder.recordFrame(screenLms, worldLms, t.debug ?? null, c, meta);
+      imageStatsRef.current = logRecorder.getLastImageStats();
+    }
+
     if (c !== lastRepRef.current) {
       // Unilateral: after the right arm hits target, switch to the left and
       // keep the set open. The set only advances once both arms are done. This
@@ -134,12 +192,20 @@ export function Training() {
         lastRepRef.current = c;
         setReps(c);
         if (!isAmrap && c >= targetReps && getSettings().autoRest) {
-          // tiny delay so the set-complete line gets a beat to play.
-          // Via ref: this callback is memoised and would otherwise close over
-          // a stale finishSet (and therefore a stale setIdx) whenever
-          // consecutive sets share the same reps/weight — which would write
-          // the actuals onto the wrong set.
-          setTimeout(() => finishSetRef.current(c), 600);
+          // While recording diagnostics, auto-advance would skip straight past
+          // the "how many did you actually do?" prompt — which is the label
+          // that makes the whole trace worth keeping. Open the sheet instead
+          // and let the user confirm or correct the count.
+          if (isDebugLogging()) {
+            setTimeout(() => setSheet("set"), 600);
+          } else {
+            // tiny delay so the set-complete line gets a beat to play.
+            // Via ref: this callback is memoised and would otherwise close over
+            // a stale finishSet (and therefore a stale setIdx) whenever
+            // consecutive sets share the same reps/weight — which would write
+            // the actuals onto the wrong set.
+            setTimeout(() => finishSetRef.current(c), 600);
+          }
         }
       }
     }
@@ -156,8 +222,24 @@ export function Training() {
   const finishSetRef = useRef<(reps: number) => void>(() => {});
   finishSetRef.current = finishSet;
 
-  function finishSet(repsDone: number) {
+  function finishSet(repsDone: number, actualReps?: number | null) {
     if (!session || !workout) return;
+
+    // Per-rep extremes are diagnostics only now — they go into the trace so a
+    // set's achieved range can be read back, but nothing persists them.
+    const cycles = trackerRef.current?.cycles ?? [];
+    const restCycles = trackerRef.current?.restCycles ?? [];
+    const trusted = actualReps == null || actualReps === repsDone;
+
+    // Close the diagnostics trace first: `actualReps` is the user's own count,
+    // which is what turns the frame trace into labelled data. Fire-and-forget —
+    // persisting a debug log must never delay the workout.
+    if (debugOn) {
+      void logRecorder.endSet({
+        countedReps: repsDone, actualReps,
+        cycles: { extremes: cycles, restExtremes: restCycles, trusted },
+      });
+    }
     recordActuals(session, workoutIdx, setIdx, { reps: repsDone, weight });
     setSheet(null);
 
@@ -281,6 +363,15 @@ export function Training() {
         </div>
       </button>
 
+      {debugOn && (
+        <DebugTrace
+          trackerRef={trackerRef}
+          imageRef={imageStatsRef}
+          fpsRef={frameTimingRef}
+          onClose={() => setDebugOn(false)}
+        />
+      )}
+
       {sheet === "set" && (
         <SetSheet
           reps={reps}
@@ -288,9 +379,10 @@ export function Training() {
           amrap={isAmrap}
           showSwitchArm={isUnilateral && side === "right"}
           onSwitchArm={switchToOtherArm}
-          onComplete={() => finishSet(reps)}
-          onSkip={() => finishSet(0)}
+          onComplete={(actual) => finishSet(reps, actual)}
+          onSkip={() => finishSet(0, 0)}
           onClose={() => setSheet(null)}
+          askActual={debugOn}
         />
       )}
 
@@ -305,9 +397,15 @@ export function Training() {
             mutateWeight(session, workoutIdx, setIdx, fn);
           }}
           onEndWorkout={() => { endSession(); }}
+          onSettings={() => setSheet("settings")}
           onClose={() => setSheet(null)}
         />
       )}
+
+      {/* Settings opens over the workout rather than navigating to the
+          Settings scene — leaving Training would tear down the camera and
+          the rep tracker mid-set. Closing it drops straight back to the feed. */}
+      {sheet === "settings" && <QuickSettings onClose={() => setSheet(null)} />}
     </div>
   );
 }
@@ -341,11 +439,16 @@ function RepSegments({ done, target, amrap }: {
 
 // ── Overlays ─────────────────────────────────────────────────────────────────
 
-function SetSheet({ reps, target, amrap, showSwitchArm, onSwitchArm, onComplete, onSkip, onClose }: {
+function SetSheet({ reps, target, amrap, showSwitchArm, onSwitchArm, onComplete, onSkip, onClose, askActual }: {
   reps: number; target: number; amrap: boolean;
   showSwitchArm: boolean; onSwitchArm(): void;
-  onComplete(): void; onSkip(): void; onClose(): void;
+  onComplete(actual: number | null): void; onSkip(): void; onClose(): void;
+  askActual: boolean;
 }) {
+  // Ground truth for the diagnostics log. Seeded with the tracker's count so
+  // the common case ("it was right") is one tap, and only the corrections cost
+  // the user anything.
+  const [actual, setActual] = useState(reps);
   return (
     <Backdrop onClose={onClose}>
       <div
@@ -358,6 +461,19 @@ function SetSheet({ reps, target, amrap, showSwitchArm, onSwitchArm, onComplete,
             {reps} {amrap ? "reps done" : `of ${target} reps done`}
           </div>
         </div>
+
+        {askActual && (
+          <div className="mt-4">
+            <Stepper
+              label="HOW MANY DID YOU ACTUALLY DO?"
+              value={String(actual)}
+              suffix={actual === reps ? "· matches" : `· counted ${reps}`}
+              onMinus={() => setActual((v) => Math.max(0, v - 1))}
+              onPlus={() => setActual((v) => v + 1)}
+            />
+          </div>
+        )}
+
         <div className="mt-5 flex flex-col gap-2">
           {showSwitchArm && (
             <button
@@ -368,7 +484,7 @@ function SetSheet({ reps, target, amrap, showSwitchArm, onSwitchArm, onComplete,
             </button>
           )}
           <button
-            onClick={onComplete}
+            onClick={() => onComplete(askActual ? actual : null)}
             className="w-full py-3.5 rounded-2xl font-bold bg-nav text-white"
           >
             ✓ Complete Set
@@ -387,10 +503,10 @@ function SetSheet({ reps, target, amrap, showSwitchArm, onSwitchArm, onComplete,
   );
 }
 
-function MenuSheet({ exercise, setIdx, totalSets, weight, onWeight, onEndWorkout, onClose }: {
+function MenuSheet({ exercise, setIdx, totalSets, weight, onWeight, onEndWorkout, onSettings, onClose }: {
   exercise: string; setIdx: number; totalSets: number; weight: number;
   onWeight(fn: (v: number) => number): void;
-  onEndWorkout(): void; onClose(): void;
+  onEndWorkout(): void; onSettings(): void; onClose(): void;
 }) {
   const [, force] = useState({});
   const [confirmEnd, setConfirmEnd] = useState(false);
@@ -458,6 +574,14 @@ function MenuSheet({ exercise, setIdx, totalSets, weight, onWeight, onEndWorkout
             force({});
           }}
         />
+
+        <button
+          onClick={onSettings}
+          className="mt-3 w-full py-3.5 rounded-2xl font-bold text-ink bg-panel-dark flex items-center justify-center gap-2"
+        >
+          <GearIcon />
+          Settings
+        </button>
 
         {confirmEnd ? (
           <div className="mt-4 rounded-2xl border border-accent bg-accent/10 p-3">

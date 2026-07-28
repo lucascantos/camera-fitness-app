@@ -13,6 +13,7 @@ import { TRAINERS } from "@/data/trainers";
 import { TrainerAvatar } from "@/components/trainer/TrainerAvatar";
 import { POSE_STYLES } from "@/tracking/poseRenderer";
 import { getGpuStatus } from "@/tracking/gpuStatus";
+import { TrackingDebugSection } from "@/components/TrackingDebugSection";
 
 const THEMES: { id: Theme; label: string }[] = [
   { id: "fitpop", label: "Light" },
@@ -166,6 +167,7 @@ export function Settings() {
 
       <InstallSection />
       <DataSection />
+      <TrackingDebugSection />
     </div>
   );
 }

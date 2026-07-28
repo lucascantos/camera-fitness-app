@@ -2,6 +2,7 @@ import { defineConfig, type PluginOption } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 import path from "node:path";
+import { logSink } from "./scripts/viteLogSink";
 
 // `base` must match the GitHub Pages sub-path (https://USER.github.io/REPO/)
 // for production builds, but stay "/" for local dev so the dev server serves
@@ -9,6 +10,10 @@ import path from "node:path";
 export default defineConfig(async ({ command, mode }) => {
   const plugins: PluginOption[] = [
     react(),
+    // Dev-only: lets a phone POST its recorded pose traces to ./logs/ on this
+    // machine, since there's no cloud storage to move them through. Inert in
+    // `vite build` — see scripts/viteLogSink.ts.
+    logSink(),
     VitePWA({
       registerType: "autoUpdate",
       // devOptions stays disabled: a service worker fighting Vite's dev-mode
