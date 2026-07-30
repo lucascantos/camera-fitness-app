@@ -65,6 +65,16 @@ export interface AngleTrackerOptions {
   landmarks: [number, number, number];
   /** Per-side landmark triples, for unilateral movements. */
   sideLandmarks?: Record<Side, [number, number, number]>;
+  /**
+   * The opposite-side triple, enabling automatic side selection on bilateral
+   * movements. The tracker watches both and counts on whichever the camera can
+   * actually see — measured, one whole limb chain routinely drops to ~0.1
+   * visibility while the other sits at ~0.95, purely from how the athlete is
+   * turned. Ignored for unilateral exercises, where the side is the point.
+   */
+  mirrorLandmarks?: [number, number, number];
+  /** Posture constraints for the mirrored side. */
+  mirrorPosture?: PostureConstraint[];
   /** Angle at or beyond which the joint is in the working position. */
   workThreshold: number;
   /** Angle at or beyond which the joint is back at rest. */
@@ -95,6 +105,7 @@ export function createAngleTracker(opts: AngleTrackerOptions): ExerciseTracker {
     name, landmarks, sideLandmarks, workThreshold, restThreshold,
     confirmFrames = CONFIRM_FRAMES_DEFAULT, posture, sidePosture,
     unilateral = false, adaptive, auxAngles,
+    mirrorLandmarks, mirrorPosture,
   } = opts;
 
   let work = workThreshold;
@@ -102,7 +113,14 @@ export function createAngleTracker(opts: AngleTrackerOptions): ExerciseTracker {
   let inverted = work > rest;
 
   let side: Side = "right";
+  // One sample stream per candidate side. Both are filled every frame; the
+  // state machine runs over whichever side is currently chosen, and a change
+  // of side re-counts from frame zero exactly like a threshold revision does.
   let samples: Sample[] = [];
+  let mirrorSamples: Sample[] = [];
+  let visSum = 0;
+  let mirrorVisSum = 0;
+  let usingMirror = false;
   let count = 0;
   let lastAngle: number | null = null;
   let formError: string | null = null;
@@ -120,6 +138,10 @@ export function createAngleTracker(opts: AngleTrackerOptions): ExerciseTracker {
 
   function resetAll() {
     samples = [];
+    mirrorSamples = [];
+    visSum = 0;
+    mirrorVisSum = 0;
+    usingMirror = false;
     count = 0;
     cycles = [];
     restCycles = [];
@@ -135,7 +157,8 @@ export function createAngleTracker(opts: AngleTrackerOptions): ExerciseTracker {
   /** Revise the thresholds from the range observed so far in this set. */
   function adapt() {
     if (!adaptive) return;
-    const angles = samples.filter((s) => !s.blocked).map((s) => s.angle);
+    const active = usingMirror ? mirrorSamples : samples;
+    const angles = active.filter((s) => !s.blocked).map((s) => s.angle);
     if (angles.length < 15) return;
     const sorted = [...angles].sort((a, b) => a - b);
     const at = (p: number) => sorted[Math.min(sorted.length - 1, Math.floor(p * sorted.length))];
@@ -216,25 +239,54 @@ export function createAngleTracker(opts: AngleTrackerOptions): ExerciseTracker {
 
       if (samples.length < MAX_SAMPLES) {
         samples.push({ angle, blocked: formError !== null });
+        visSum += vis ?? 0;
+
+        // Mirror side, sampled in lockstep so the two streams stay index-aligned
+        // and a side change can re-count without re-reading anything.
+        if (mirrorLandmarks) {
+          const mVis = minVisibility(screen, mirrorLandmarks);
+          const [mi, mj, mk] = mirrorLandmarks;
+          const ma = lms[mi], mb = lms[mj], mc = lms[mk];
+          const mAngle = ma && mb && mc ? angle3D(ma, mb, mc) : NaN;
+          const mBlocked = mirrorPosture ? checkPosture(lms, mirrorPosture) !== null : false;
+          // A missing mirror landmark reuses the primary angle rather than
+          // dropping the sample: the two streams must stay the same length.
+          mirrorSamples.push({
+            angle: isFinite(mAngle) ? mAngle : angle,
+            blocked: isFinite(mAngle) ? mBlocked : true,
+          });
+          mirrorVisSum += mVis ?? 0;
+        }
       }
 
-      if (adaptive && samples.length >= ADAPT_MIN_SAMPLES && ++sinceAdapt >= ADAPT_EVERY) {
+      if (samples.length >= ADAPT_MIN_SAMPLES && ++sinceAdapt >= ADAPT_EVERY) {
         sinceAdapt = 0;
+        // Choose the better-observed side before re-deriving thresholds, so the
+        // range is measured on the limb we are actually going to count.
+        if (mirrorLandmarks) usingMirror = mirrorVisSum > visSum;
         adapt();
       }
 
-      const r = runStateMachine(samples, work, rest, confirmFrames);
+      const r = runStateMachine(
+        usingMirror ? mirrorSamples : samples, work, rest, confirmFrames,
+      );
       cycles = r.cycles;
       restCycles = r.restCycles;
       // Never let the displayed count go backwards when a revision reinterprets
       // earlier frames — see the header note.
       count = Math.max(count, r.count);
 
+      const activeSample = usingMirror
+        ? mirrorSamples[mirrorSamples.length - 1]
+        : samples[samples.length - 1];
       debug = buildDebug({
-        angle, state: r.state, target: r.target, confirm: r.confirm, confirmFrames,
-        formError, side: unilateral ? side : undefined,
-        minVisibility: vis, usedWorld, angleOther, aux,
-        reason: formError ? "posture-gate" : r.reason,
+        angle: activeSample?.angle ?? angle,
+        state: r.state, target: r.target, confirm: r.confirm, confirmFrames,
+        formError, side: unilateral ? side : usingMirror ? "left" : "right",
+        minVisibility: usingMirror ? minVisibility(screen, mirrorLandmarks!) : vis,
+        usedWorld, angleOther,
+        aux: { ...(aux ?? {}), usingMirror: usingMirror ? 1 : 0 },
+        reason: formError && !usingMirror ? "posture-gate" : r.reason,
       });
       return count;
     },

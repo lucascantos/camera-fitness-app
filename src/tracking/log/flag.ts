@@ -21,6 +21,23 @@ export interface DebugOptions {
   keyframes: boolean;
   /** Log all 33 landmarks rather than only those the tracker reads. */
   fullLandmarks: boolean;
+  /**
+   * Record the camera stream for the set, so upstream changes — inference
+   * resolution, model variant, confidence parameters — can be re-run offline
+   * against the same real movement. Landmark traces cannot answer those
+   * questions: they are downstream of the thing being changed.
+   */
+  video: boolean;
+  /**
+   * Force the inference longest-side, for interleaved resolution A/B tests.
+   * 0 uses the built-in default.
+   */
+  inferenceDim: number;
+  /**
+   * Show a large tap target during the set. Each tap timestamps one real rep,
+   * turning "counted 4, actual 10" into knowing *which* six were missed.
+   */
+  repTap: boolean;
 }
 
 const DEFAULTS: DebugOptions = {
@@ -29,6 +46,9 @@ const DEFAULTS: DebugOptions = {
   orientation: true,
   keyframes: false, // opt-in: stores images of the user
   fullLandmarks: true,
+  video: false,     // opt-in: records the user
+  inferenceDim: 0,  // 0 = built-in default
+  repTap: false,
 };
 
 let _opts: DebugOptions = { ...DEFAULTS };

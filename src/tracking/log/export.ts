@@ -16,7 +16,7 @@
 // Nothing is ever sent anywhere the user didn't pick: route 1 is the user's own
 // laptop on the LAN, routes 2 and 3 are OS-level handoffs.
 
-import { getAllSetLogs, getSetLog } from "./logDb";
+import { getAllSetLogs, getSetLog, getSetVideo } from "./logDb";
 import type { SetLog } from "./types";
 
 const SINK_ROUTE = "/__tracking-log";
@@ -28,6 +28,8 @@ export interface ExportResult {
   count: number;
   /** Paths written on the dev machine, when the sink handled it. */
   files?: string[];
+  /** Recordings uploaded alongside the traces. */
+  videos?: number;
 }
 
 let sinkAvailable: boolean | null = null;
@@ -75,7 +77,10 @@ async function exportLogs(logs: SetLog[], filename: string): Promise<ExportResul
       });
       const body = (await res.json()) as { ok: boolean; files?: string[]; error?: string };
       if (res.ok && body.ok) {
-        return { route: "dev-sink", count: logs.length, files: body.files };
+        // Recordings go separately as raw binary — they are far too large to
+        // base64 into the JSON payload.
+        const videos = await uploadVideos(logs.map((l) => l.id));
+        return { route: "dev-sink", count: logs.length, files: body.files, videos };
       }
       // Fall through to the share/download routes rather than failing —
       // losing the trace to a sink hiccup would be the worst outcome.
@@ -105,6 +110,32 @@ async function exportLogs(logs: SetLog[], filename: string): Promise<ExportResul
 
   download(file, filename);
   return { route: "download", count: logs.length };
+}
+
+/**
+ * POST each stored recording to the dev sink. Best-effort: a failure here must
+ * not lose the trace that already uploaded successfully.
+ */
+async function uploadVideos(ids: string[]): Promise<number> {
+  let sent = 0;
+  for (const id of ids) {
+    let blob: Blob | undefined;
+    try {
+      blob = await getSetVideo(id);
+    } catch { continue; }
+    if (!blob) continue;
+    try {
+      const res = await fetch(`${SINK_ROUTE}/video?id=${encodeURIComponent(id)}`, {
+        method: "POST",
+        headers: { "content-type": blob.type || "application/octet-stream" },
+        body: blob,
+      });
+      if (res.ok) sent++;
+    } catch (e) {
+      console.warn("[tracking-log] video upload failed for", id, e);
+    }
+  }
+  return sent;
 }
 
 function download(blob: Blob, filename: string) {

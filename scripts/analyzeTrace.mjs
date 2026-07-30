@@ -110,6 +110,11 @@ for (const l of logs) {
   if (s.reasons["posture-gate"]) flags.push(`posture×${s.reasons["posture-gate"]}`);
   if (l.truncated) flags.push("TRUNCATED");
   if (l.events.length) flags.push(`events×${l.events.length}`);
+  // Tapped reps are a far stronger label than a net count — they say *which*
+  // reps were missed, so a failure can be aligned to a moment in the trace.
+  if (l.repTaps?.length) flags.push(`taps:${l.repTaps.length}`);
+  if (l.video) flags.push(`video ${(l.video.bytes / 1e6).toFixed(1)}MB`);
+  if (l.context.build) flags.push(`build:${l.context.build.id}`);
 
   console.log(
     pad(l.context.exercise, 22) +

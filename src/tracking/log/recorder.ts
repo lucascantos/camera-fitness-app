@@ -22,7 +22,9 @@ import {
   stopOrientation,
 } from "./deviceOrientation";
 import { maybeCapture } from "./keyframes";
-import { putSetLog } from "./logDb";
+import { putSetLog, putSetVideo } from "./logDb";
+import { startVideoCapture, type VideoCapture } from "./videoCapture";
+import { POSE_OPTIONS } from "@/hooks/useMediapipe";
 import type {
   FrameMeta,
   FrameSample,
@@ -41,6 +43,16 @@ const MAX_KEYFRAMES = 120;
 
 /** Landmark subset logged when fullLandmarks is off — the joints trackers read. */
 const CORE_LANDMARKS = [0, 11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28];
+
+// Injected by vite.config.ts. Read defensively: these are bare globals rather
+// than imports, so if the define ever fails to apply — a dev server started
+// before the config changed, a test runner, an unusual bundler — referencing
+// them directly throws a ReferenceError and takes the whole set down. A trace
+// with an unknown build id is worth far more than a crashed workout.
+const BUILD = {
+  id: typeof __BUILD_ID__ === "string" ? __BUILD_ID__ : "unknown",
+  time: typeof __BUILD_TIME__ === "string" ? __BUILD_TIME__ : "",
+};
 
 export interface BeginSetArgs {
   video: HTMLVideoElement | null;
@@ -71,6 +83,8 @@ interface ActiveSet {
   keyframes: { t: number; dataUrl: string }[];
   lastKeyframeAt: number;
   hiddenSince: number | null;
+  repTaps: number[];
+  videoCapture: VideoCapture | null;
 }
 
 let active: ActiveSet | null = null;
@@ -139,6 +153,10 @@ export function beginSet(args: BeginSetArgs): void {
     keyframes: [],
     lastKeyframeAt: -Infinity,
     hiddenSince: null,
+    repTaps: [],
+    // Records the raw camera stream so upstream changes (resolution, model,
+    // confidence params) can be re-run offline against the same movement.
+    videoCapture: opts.video ? startVideoCapture(args.stream) : null,
     context: {
       exercise: args.exercise,
       targetReps: args.targetReps,
@@ -163,6 +181,8 @@ export function beginSet(args: BeginSetArgs): void {
       devicePixelRatio: window.devicePixelRatio,
       heightCm: settings.heightCm,
       poseModel: args.poseModel,
+      build: BUILD,
+      poseOptions: { ...POSE_OPTIONS },
       landmarkIndices: opts.fullLandmarks ? null : CORE_LANDMARKS,
       calibration: args.calibration,
     },
@@ -231,6 +251,22 @@ export function markEvent(kind: GroundTruthEvent["kind"]): void {
 }
 
 /**
+ * The athlete tapped to mark one real rep. Timestamps are what turn a net
+ * miscount into knowing which reps were missed and when.
+ */
+export function markRepTap(): number {
+  const a = active;
+  if (!a) return 0;
+  a.repTaps.push(Math.round(performance.now() - a.t0));
+  return a.repTaps.length;
+}
+
+/** How many rep taps have been recorded for the live set. */
+export function getRepTapCount(): number {
+  return active?.repTaps.length ?? 0;
+}
+
+/**
  * Finish and persist the current set. `actualReps` is the user's own count —
  * pass null when they didn't supply one. Returns the stored log id, or null
  * when nothing was being recorded.
@@ -245,6 +281,9 @@ export async function endSet(result: {
   active = null;
   if (!a) return null;
 
+  // Stop the recording before assembling the log so its size can be recorded.
+  const video = a.videoCapture ? await a.videoCapture.stop() : null;
+
   const log: SetLog = {
     id: a.id,
     startedAt: a.startedAt,
@@ -258,10 +297,13 @@ export async function endSet(result: {
     note: result.note ?? null,
     keyframes: a.keyframes,
     cycles: result.cycles ?? null,
+    repTaps: a.repTaps,
+    video: video ? { mimeType: video.mimeType, bytes: video.blob.size } : null,
   };
 
   try {
     await putSetLog(log);
+    if (video) await putSetVideo(log.id, video.blob);
     return log.id;
   } catch (e) {
     // Quota or a blocked upgrade — losing a diagnostic trace must never break
@@ -273,11 +315,13 @@ export async function endSet(result: {
 
 /** Throw away the in-progress set without persisting it. */
 export function abortSet(): void {
+  active?.videoCapture?.cancel();
   active = null;
 }
 
 /** Release the orientation listener. Call when leaving the training scene. */
 export function teardown(): void {
+  active?.videoCapture?.cancel();
   active = null;
   stopOrientation();
 }

@@ -5,6 +5,7 @@ import {
   type PoseLandmarkerResult,
 } from "@mediapipe/tasks-vision";
 import type { FrameMeta } from "@/tracking/log/types";
+import { getDebugOptions } from "@/tracking/log/flag";
 
 // Self-hosted (same-origin) rather than the jsdelivr CDN / Google Storage:
 // this is what makes the pose model work offline once the PWA's service
@@ -63,6 +64,22 @@ const WARMUP_FRAMES = 10;
 const FPS_EMA_ALPHA = 0.1;
 const FPS_HINT_LOW = 12;
 
+/**
+ * The landmarker options, hoisted so the diagnostics log can record exactly
+ * what the model ran under. Changing any of these invalidates comparison with
+ * older traces, and a trace that doesn't state them can't be interpreted after
+ * the fact.
+ */
+export const POSE_OPTIONS = {
+  modelAssetPath: MODEL_URL,
+  delegate: "GPU" as const,
+  runningMode: "VIDEO" as const,
+  numPoses: 1,
+  minPoseDetectionConfidence: 0.5,
+  minPosePresenceConfidence: 0.5,
+  minTrackingConfidence: 0.5,
+};
+
 /** Model path, surfaced so the diagnostics log can record which one ran. */
 export const POSE_MODEL_URL = MODEL_URL;
 
@@ -108,12 +125,15 @@ export function useMediapipe(
       try {
         const vision = await FilesetResolver.forVisionTasks(WASM_URL);
         const lm = await PoseLandmarker.createFromOptions(vision, {
-          baseOptions: { modelAssetPath: MODEL_URL, delegate: "GPU" },
-          runningMode: "VIDEO",
-          numPoses: 1,
-          minPoseDetectionConfidence: 0.5,
-          minPosePresenceConfidence: 0.5,
-          minTrackingConfidence: 0.5,
+          baseOptions: {
+            modelAssetPath: POSE_OPTIONS.modelAssetPath,
+            delegate: POSE_OPTIONS.delegate,
+          },
+          runningMode: POSE_OPTIONS.runningMode,
+          numPoses: POSE_OPTIONS.numPoses,
+          minPoseDetectionConfidence: POSE_OPTIONS.minPoseDetectionConfidence,
+          minPosePresenceConfidence: POSE_OPTIONS.minPosePresenceConfidence,
+          minTrackingConfidence: POSE_OPTIONS.minTrackingConfidence,
         });
         if (disposed) { lm.close(); return; }
         landmarkerRef.current = lm;
@@ -155,7 +175,12 @@ export function useMediapipe(
           const vw = v.videoWidth;
           const vh = v.videoHeight;
           let input: HTMLVideoElement | HTMLCanvasElement = v;
-          const scale = vw && vh ? Math.min(1, INFERENCE_MAX_DIM / Math.max(vw, vh)) : 1;
+          // Overridable so a capture session can alternate resolutions within
+          // one sitting. Between-session variance dominates, so an A/B across
+          // sessions would be swamped by it — the comparison has to interleave.
+          const dimOverride = getDebugOptions().inferenceDim;
+          const targetDim = dimOverride || INFERENCE_MAX_DIM;
+          const scale = vw && vh ? Math.min(1, targetDim / Math.max(vw, vh)) : 1;
           if (scale < 1) {
             let pc = procCanvasRef.current;
             if (!pc) {
@@ -185,7 +210,7 @@ export function useMediapipe(
             inferenceMs: Math.round(inferenceMs * 100) / 100,
             fps: Math.round(fpsEmaRef.current * 10) / 10,
             skip: skipRef.current,
-            maxDim: INFERENCE_MAX_DIM,
+            maxDim: targetDim,
           });
 
           // ── Adapt on inference cost, and report FPS separately ──

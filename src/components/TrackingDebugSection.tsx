@@ -13,16 +13,21 @@ import {
   type DebugOptions,
 } from "@/tracking/log/flag";
 import { exportAllLogs, hasDevSink } from "@/tracking/log/export";
-import { clearSetLogs, listSetLogs } from "@/tracking/log/logDb";
+import { clearSetLogs, listSetLogs, listSetVideos } from "@/tracking/log/logDb";
+import { canCaptureVideo } from "@/tracking/log/videoCapture";
 import type { SetLogSummary } from "@/tracking/log/types";
 
 export function TrackingDebugSection() {
   const [opts, setOpts] = useState<DebugOptions>(getDebugOptions);
   const [logs, setLogs] = useState<SetLogSummary[]>([]);
   const [sink, setSink] = useState<boolean | null>(null);
+  const [videoBytes, setVideoBytes] = useState(0);
   const [status, setStatus] = useState<{ kind: "ok" | "err"; msg: string } | null>(null);
 
-  const refresh = () => void listSetLogs().then(setLogs).catch(() => setLogs([]));
+  const refresh = () => {
+    void listSetLogs().then(setLogs).catch(() => setLogs([]));
+    void listSetVideos().then((v) => setVideoBytes(v.bytes)).catch(() => setVideoBytes(0));
+  };
 
   useEffect(() => {
     refresh();
@@ -39,7 +44,7 @@ export function TrackingDebugSection() {
         kind: "ok",
         msg:
           r.route === "dev-sink"
-            ? `Sent ${r.count} trace(s) to your dev machine → logs/`
+            ? `Sent ${r.count} trace(s)${r.videos ? ` + ${r.videos} recording(s)` : ""} to your dev machine → logs/`
             : r.route === "share"
               ? `Shared ${r.count} trace(s)`
               : `Downloaded ${r.count} trace(s)`,
@@ -102,6 +107,44 @@ export function TrackingDebugSection() {
               on={opts.fullLandmarks}
               onToggle={(v) => patch({ fullLandmarks: v })}
             />
+            <Check
+              label="Record video"
+              hint={canCaptureVideo()
+                ? "Records the camera so resolution/model changes can be re-tested against the same movement. ~11 MB/min, stays on this device."
+                : "Not supported by this browser."}
+              on={opts.video}
+              onToggle={(v) => patch({ video: v })}
+            />
+            <Check
+              label="Tap each rep"
+              hint="Big tap target during the set. Says which reps were missed, not just how many."
+              on={opts.repTap}
+              onToggle={(v) => patch({ repTap: v })}
+            />
+          </div>
+
+          {/* Interleaved A/B: between-session variance dominates, so comparing
+              settings across sessions is swamped by it. Alternate within one. */}
+          <div className="mt-3 rounded-2xl bg-panel-dark p-3">
+            <div className="text-[11px] font-bold tracking-widest text-gray-dark">
+              INFERENCE RESOLUTION
+            </div>
+            <div className="flex gap-2 mt-2">
+              {[0, 320, 480, 640].map((d) => (
+                <button
+                  key={d}
+                  onClick={() => patch({ inferenceDim: d })}
+                  className={
+                    "px-3 py-2 rounded-xl text-sm font-bold " +
+                    (opts.inferenceDim === d
+                      ? "bg-accent text-on_accent"
+                      : "bg-panel text-gray-dark border border-border")
+                  }
+                >
+                  {d === 0 ? "default" : d}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="mt-4 rounded-2xl bg-panel-dark p-3">
@@ -109,6 +152,9 @@ export function TrackingDebugSection() {
               {logs.length} trace{logs.length === 1 ? "" : "s"} stored
               {totalBytes > 0 && (
                 <span className="font-normal text-gray-dark"> · {mb(totalBytes)}</span>
+              )}
+              {videoBytes > 0 && (
+                <span className="font-normal text-gray-dark"> + {mb(videoBytes)} video</span>
               )}
             </div>
             <div className="text-xs text-gray-dark mt-1">

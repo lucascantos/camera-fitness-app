@@ -10,8 +10,11 @@ import { openDB, type IDBPDatabase } from "idb";
 import type { SetLog, SetLogSummary } from "./types";
 
 const DB_NAME = "camera-fitness-app-logs";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE = "sets";
+// Video lives in its own store: blobs are orders of magnitude larger than the
+// traces, and the trace list must stay cheap to read without dragging them in.
+const VIDEO_STORE = "videos";
 
 // Oldest logs are pruned past this so a long debugging session can't fill the
 // origin's quota and get the whole app's storage evicted.
@@ -26,6 +29,9 @@ function db(): Promise<IDBPDatabase> {
         if (!d.objectStoreNames.contains(STORE)) {
           const store = d.createObjectStore(STORE, { keyPath: "id" });
           store.createIndex("startedAt", "startedAt");
+        }
+        if (!d.objectStoreNames.contains(VIDEO_STORE)) {
+          d.createObjectStore(VIDEO_STORE);
         }
       },
     });
@@ -56,11 +62,33 @@ export async function listSetLogs(): Promise<SetLogSummary[]> {
 }
 
 export async function deleteSetLog(id: string): Promise<void> {
-  await (await db()).delete(STORE, id);
+  const d = await db();
+  await d.delete(STORE, id);
+  await d.delete(VIDEO_STORE, id);
 }
 
 export async function clearSetLogs(): Promise<void> {
-  await (await db()).clear(STORE);
+  const d = await db();
+  await d.clear(STORE);
+  await d.clear(VIDEO_STORE);
+}
+
+// ── video ────────────────────────────────────────────────────────────────────
+
+export async function putSetVideo(id: string, blob: Blob): Promise<void> {
+  await (await db()).put(VIDEO_STORE, blob, id);
+}
+
+export async function getSetVideo(id: string): Promise<Blob | undefined> {
+  return (await db()).get(VIDEO_STORE, id) as Promise<Blob | undefined>;
+}
+
+/** ids that have a recording, and the total bytes they occupy. */
+export async function listSetVideos(): Promise<{ ids: string[]; bytes: number }> {
+  const d = await db();
+  const keys = (await d.getAllKeys(VIDEO_STORE)).map(String);
+  const blobs = (await d.getAll(VIDEO_STORE)) as Blob[];
+  return { ids: keys, bytes: blobs.reduce((n, b) => n + (b?.size ?? 0), 0) };
 }
 
 /** Rough on-disk footprint of all logs, in bytes. */
@@ -99,4 +127,7 @@ async function prune(d: IDBPDatabase): Promise<void> {
   const tx = d.transaction(STORE, "readwrite");
   for (const k of excess) await tx.store.delete(k);
   await tx.done;
+  const vtx = d.transaction(VIDEO_STORE, "readwrite");
+  for (const k of excess) await vtx.store.delete(k as IDBValidKey);
+  await vtx.done;
 }

@@ -38,10 +38,16 @@ So there is no profile, no wizard, and nothing persisted. Instead:
    new thresholds. Nothing is lost to the observation window, because the
    observation window is re-counted.
 4. The displayed count **never decreases**. This is both better UX and more
-   accurate — revisions that lower a count are usually wrong.
+   accurate — revisions that lower a count are usually wrong. **Caveat added
+   2026-07-28: this is what causes the monotonic-overcount bug — see Known
+   issues below. True on the sets it was measured against; not true in
+   general.**
 
 Result on 27 labelled sets: total absolute error **144 → 77**, and **94%
-accuracy** wherever median landmark confidence is at or above 0.90.
+accuracy** wherever median landmark confidence is at or above 0.90. **These
+sets were all short (12–14 reps). The monotonic-overcount bug below only
+surfaces on longer sets, so this result likely overstates accuracy for a full
+working set.**
 
 ### What is still true from the early findings
 
@@ -528,23 +534,98 @@ calibration.**
 
 ---
 
+## Known issues (pinned, not being fixed yet)
+
+### PIN-1 — Monotonic re-count can silently overcount on long sets
+
+**Status: known cause, deliberately not fixed.** Recorded here so the mechanism
+isn't rediscovered from scratch later.
+
+**Symptom.** Several sets recorded 2026-07-28 overcounted: bench press 15/12
+and 13/12, overhead press 14/12, lateral raise 12/10. This is new — the 27 sets
+behind the 144→77 result never showed it.
+
+**Cause.** The tracker periodically re-estimates the work/rest thresholds from
+everything it has seen so far (p20/p80 of the buffered angles) and replays the
+*entire* set from frame zero under the revised numbers (Finding 14). The
+displayed count is `max(count so far, replayed count)` — it never decreases,
+which earlier evidence showed was the right call on short sets (Finding 14's
+86→77 result).
+
+On a longer set the range estimate keeps being recomputed as more reps arrive,
+and it can drift. Confirmed directly on a bench press trace: the count jumped
+from 7 to 8 on a frame whose own live classification was `in-work-zone` — not a
+counting event at all. That can only happen when a background re-estimate
+found one extra rep buried in the replay. Because the count only ever rises,
+that phantom rep is locked in permanently, even if a later, better estimate
+would not have counted it. Reproduced with `driftEvents` instrumentation across
+bench press, overhead press, and lateral raise traces — three different
+exercises, same mechanism.
+
+**Why the earlier result didn't catch it.** The 27-set validation used short
+sets (12–14 reps, ~20–30s). This is a slow leak: it needs enough elapsed
+time/reps for the percentile estimate to wander into a state that changes a
+boundary classification. Longer sets are exactly what surfaced it.
+
+**Not the same bug as the one-arm-triceps collapse below** — that one shows the
+opposite symptom (undercounting) and doesn't use the mirror/adaptation path the
+same way, since unilateral exercises have their own side-handling logic. Keep
+these separate when either gets investigated.
+
+**Candidate fix (not implemented, not evaluated):** stop taking the max over
+replays and instead let later re-estimates revise the count in both
+directions, reconciling against a "committed" floor of rep boundaries that have
+stayed stable across several consecutive re-estimates. Untested — do not assume
+this is correct without replaying it against evidence, the same way every other
+change in this document was checked.
+
+### PIN-2 — One-arm triceps extension collapsed on 2026-07-28 data
+
+**Status: observed, not diagnosed.** One set counted 3/12 (recorded live as
+12/12 — the live and replayed counts disagree, which is itself a clue worth
+chasing), another counted 1/7. This exercise is unilateral and was excluded
+from the side-selection fix above by design (the tracked side *is* the
+exercise), so whatever is wrong here is unrelated to PIN-1 and needs its own
+look — likely starting with which arm was actually being watched versus which
+arm the athlete used, and why the live and replayed counts differ.
+
+---
+
 ## Next steps
 
 Ordered by expected value, highest first.
 
-### 1. Track whichever side is better observed
+### 1. ~~Track whichever side is better observed~~ — DONE
 
-Every tracker watches the right side only. Horizontal movements put that side
-nearest the floor or occluded by the torso, which is exactly where the 65% of
-error lives. Both sides are already in every frame and both are already logged.
+Confirmed the cause first: a failing bicep curl set showed both shoulders and
+both hips at 0.99–1.00 visibility while the entire right arm chain sat at
+0.07–0.19 and the left at 0.83–0.97. Not a bad pose estimate — the athlete was
+turned enough that the tracked side was genuinely hidden, and every tracker
+only ever looked at the right side.
 
-Approach: compute the angle on each side, pick per frame by `visibility`, or
-blend when both are confident. Needs care — switching sides mid-rep could
-introduce a discontinuity that reads as a phantom rep, so it likely needs
-hysteresis on the side choice itself.
+Both sides are logged every frame, so four selection strategies were tested by
+replay before writing any tracking code: per-set visibility (error 77),
+per-frame selection (78), per-frame with hysteresis (81 — the mid-rep-switch
+risk this item worried about turned out not to cost anything, and the margin
+just blocked useful switches), and widest-observed-range (92). Per-set won and
+is the simplest, so that's what shipped: the tracker buffers both sides in
+lockstep and, at the same cadence it already re-estimates thresholds, counts on
+whichever side has had better average visibility so far — reusing the existing
+re-count machinery rather than adding a new one.
 
-*Test:* replay the six bench press and two push-up traces; they are the ones
-this should move.
+Verified in the real implementation, not just the simulation: **93 → 84**
+across 32 sets, 16 sets better, 2 worse. The 2 regressions are believed to be
+the mirrored posture gate (below), not the side selection itself.
+
+**New sub-finding — the mirrored posture gate needs its own retuning.** Mirroring
+a posture constraint (e.g. curl's "elbow within 0–45° of the torso line") onto
+the other side costs ~5 error on its own — it fires 16–54 times per set on
+otherwise-clean reps, because a constraint tuned for a front-facing view
+projects differently once the athlete is turned enough that the mirror side got
+picked. Left in place deliberately: it exists to reject a real form fault
+(curling with a raised arm), and deleting a form check to win points on 32 sets
+would be the wrong trade. Needs recalibrating against the same range-of-motion
+evidence as the angle thresholds, not removing.
 
 ### 2. ~~Fix the frame-rate throttle ratchet~~ — DONE
 

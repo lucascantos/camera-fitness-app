@@ -14,7 +14,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { ExerciseTracker } from "@/tracking/exercises/types";
 import type { ImageStats } from "@/tracking/log/types";
-import { getLiveStats, markEvent } from "@/tracking/log/recorder";
+import { getLiveStats, getRepTapCount, markEvent, markRepTap } from "@/tracking/log/recorder";
+import { getDebugOptions } from "@/tracking/log/flag";
 
 const HISTORY = 240;          // ~8s of trace at 30fps
 const ANGLE_MIN = 0;
@@ -31,6 +32,8 @@ export interface DebugTraceProps {
 
 export function DebugTrace({ trackerRef, imageRef, fpsRef, onClose }: DebugTraceProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [taps, setTaps] = useState(getRepTapCount);
+  const repTapOn = getDebugOptions().repTap;
   const angles = useRef<(number | null)[]>([]);
   const reasons = useRef<string[]>([]);
   const [readout, setReadout] = useState<string[]>([]);
@@ -82,6 +85,22 @@ export function DebugTrace({ trackerRef, imageRef, fpsRef, onClose }: DebugTrace
   }, [trackerRef, imageRef, fpsRef]);
 
   return (
+    <>
+    {/* Rep-tap target. A net miscount says six reps were missed; tapping says
+        which six, which is what lets a failure be aligned to a moment in the
+        trace. Deliberately huge — this gets hit mid-set, often from the floor. */}
+    {repTapOn && (
+      <button
+        onClick={() => setTaps(markRepTap())}
+        aria-label="Tap once per rep you actually performed"
+        className="absolute inset-x-0 top-1/3 bottom-24 z-30 bg-white/5 active:bg-white/25 transition-colors flex items-end justify-center pb-4"
+      >
+        <span className="text-white/70 text-sm font-bold tracking-widest drop-shadow">
+          TAP EACH REP · {taps}
+        </span>
+      </button>
+    )}
+
     <div className="absolute left-2 right-2 z-40 pointer-events-none"
       style={{ top: "calc(env(safe-area-inset-top) + 7.5rem)" }}>
       <div className="bg-black/75 backdrop-blur rounded-xl overflow-hidden pointer-events-auto max-w-md">
@@ -139,6 +158,7 @@ export function DebugTrace({ trackerRef, imageRef, fpsRef, onClose }: DebugTrace
         )}
       </div>
     </div>
+    </>
   );
 }
 

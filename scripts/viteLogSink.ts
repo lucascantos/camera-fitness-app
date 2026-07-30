@@ -51,6 +51,27 @@ export function logSink(outDir = "logs"): Plugin {
 
         if (req.method !== "POST") return next();
 
+        // Recordings arrive as raw binary on /video?id=... — they are far too
+        // large to embed in the JSON payload.
+        if (req.url && req.url.startsWith("/video")) {
+          const id = new URL(req.url, "http://x").searchParams.get("id") ?? "unknown";
+          readRaw(req)
+            .then((buf) => {
+              fs.mkdirSync(dir, { recursive: true });
+              const ext = String(req.headers["content-type"] ?? "").includes("mp4") ? "mp4" : "webm";
+              const file = path.join(dir, `${id}.${ext}`);
+              fs.writeFileSync(file, buf);
+              server.config.logger.info(
+                `[log-sink] wrote recording ${(buf.length / 1e6).toFixed(1)} MB -> ${outDir}/${path.basename(file)}`,
+              );
+              json(res, 200, { ok: true, file: path.relative(server.config.root, file) });
+            })
+            .catch((e: unknown) => {
+              json(res, 400, { ok: false, error: e instanceof Error ? e.message : String(e) });
+            });
+          return;
+        }
+
         readBody(req)
           .then((body) => {
             const parsed = JSON.parse(body) as unknown;
@@ -93,6 +114,24 @@ function filenameFor(log: unknown): string {
   const ex = (l.context?.exercise ?? "unknown").replace(/[^a-z0-9]+/gi, "-");
   const id = (l.id ?? "0").slice(-6);
   return `${when}__${ex}__${id}.json`;
+}
+
+function readRaw(req: Connect.IncomingMessage): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    let size = 0;
+    req.on("data", (c: Buffer) => {
+      size += c.length;
+      if (size > MAX_BYTES) {
+        reject(new Error(`payload too large (>${MAX_BYTES} bytes)`));
+        req.destroy();
+        return;
+      }
+      chunks.push(c);
+    });
+    req.on("end", () => resolve(Buffer.concat(chunks)));
+    req.on("error", reject);
+  });
 }
 
 function readBody(req: Connect.IncomingMessage): Promise<string> {

@@ -2,11 +2,31 @@ import { defineConfig, type PluginOption } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 import path from "node:path";
+import { execSync } from "node:child_process";
 import { logSink } from "./scripts/viteLogSink";
 
 // `base` must match the GitHub Pages sub-path (https://USER.github.io/REPO/)
 // for production builds, but stay "/" for local dev so the dev server serves
 // the app at the root.
+// Stamped into every diagnostic trace. Without it a trace cannot say which code
+// produced its rep count, which makes comparing captures across a change
+// guesswork — a problem we hit for real while iterating on the trackers.
+function buildId(): string {
+  try {
+    const sha = execSync("git rev-parse --short HEAD", { stdio: ["ignore", "pipe", "ignore"] })
+      .toString().trim();
+    let dirty = "";
+    try {
+      if (execSync("git status --porcelain", { stdio: ["ignore", "pipe", "ignore"] }).toString().trim()) {
+        dirty = "-dirty";
+      }
+    } catch { /* ignore */ }
+    return sha + dirty;
+  } catch {
+    return "unknown";
+  }
+}
+
 export default defineConfig(async ({ command, mode }) => {
   const plugins: PluginOption[] = [
     react(),
@@ -90,6 +110,10 @@ export default defineConfig(async ({ command, mode }) => {
   }
 
   return {
+    define: {
+      __BUILD_ID__: JSON.stringify(buildId()),
+      __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+    },
     base: command === "build" ? "/camera-fitness-app/" : "/",
     plugins,
     resolve: {

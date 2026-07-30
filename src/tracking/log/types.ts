@@ -137,6 +137,13 @@ export interface GroundTruthEvent {
   kind: "missed-rep" | "false-rep";
 }
 
+/**
+ * One tap by the athlete marking a real rep, in ms since recording started.
+ * A total count says six reps were missed; these say *which* six, which is what
+ * lets a failure be aligned to a moment in the trace.
+ */
+export type RepTap = number;
+
 /** Everything that isn't per-frame: device, camera, and set context. */
 export interface SetLogContext {
   exercise: string;
@@ -161,6 +168,16 @@ export interface SetLogContext {
   /** From settings — body height feeds any future scale normalisation. */
   heightCm: number;
   poseModel: string;
+  /**
+   * Which build produced this trace. Without it, comparing captures across a
+   * code change is guesswork — we hit exactly that while iterating.
+   */
+  build: { id: string; time: string };
+  /**
+   * The landmarker options the model actually ran under. Any change to these
+   * invalidates comparison with earlier traces, so they travel with the data.
+   */
+  poseOptions: Record<string, unknown>;
   /**
    * Which landmark indices the frame rows contain, in order. null means all 33
    * in MediaPipe's native order. Recorded so an export is readable without
@@ -210,6 +227,10 @@ export interface SetLog {
   keyframes: { t: number; dataUrl: string }[];
   /** Per-rep working extremes and whether they were fed into the profile. */
   cycles: SetCycles | null;
+  /** Athlete-tapped rep timestamps, when rep-tap mode was on. */
+  repTaps: RepTap[];
+  /** Set when a camera recording was stored alongside this trace. */
+  video: { mimeType: string; bytes: number } | null;
 }
 
 /** Row shown in the log browser — the summary without the frame payload. */

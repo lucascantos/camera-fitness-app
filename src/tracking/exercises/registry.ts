@@ -61,6 +61,15 @@ const TRICEPS_POSTURE: Record<Side, PostureConstraint[]> = {
   }],
 };
 
+// MediaPipe pairs each joint as (left, right) with consecutive indices, so the
+// opposite side of any triple is a straight index swap.
+const MIRROR: Record<number, number> = {
+  11: 12, 12: 11, 13: 14, 14: 13, 15: 16, 16: 15,
+  23: 24, 24: 23, 25: 26, 26: 25, 27: 28, 28: 27,
+};
+const mirrorTriple = (t: [number, number, number]): [number, number, number] =>
+  [MIRROR[t[0]] ?? t[0], MIRROR[t[1]] ?? t[1], MIRROR[t[2]] ?? t[2]];
+
 const GEOMETRY: Record<string, Geometry> = {
   "bicep curl": {
     landmarks: [LM.RIGHT_SHOULDER, LM.RIGHT_ELBOW, LM.RIGHT_WRIST],
@@ -154,9 +163,16 @@ export function getTracker(exercise: string): ExerciseTracker | null {
   if (!reference) return null;
 
   const opening = deriveThresholds(reference, reference);
+  // Bilateral movements watch both sides and count on the better-observed one.
+  // Unilateral ones don't: there, the side *is* the exercise.
+  const mirror = geometry.unilateral ? undefined : mirrorTriple(geometry.landmarks);
   return createAngleTracker({
     name: exercise,
     ...geometry,
+    mirrorLandmarks: mirror,
+    mirrorPosture: geometry.posture?.map((c) => ({
+      ...c, landmarks: mirrorTriple(c.landmarks),
+    })),
     workThreshold: opening.work,
     restThreshold: opening.rest,
     // Population defaults are only a starting point for the first few seconds;
