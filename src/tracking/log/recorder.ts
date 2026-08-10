@@ -1,91 +1,29 @@
 // The tracking diagnostics recorder.
 //
-// One live set at a time. Training.tsx calls beginSet when a set starts,
+// One live set at a time. Training calls beginSet when a set starts,
 // recordFrame from the per-frame MediaPipe callback, and endSet when the set
 // finishes — at which point the trace is written to the log database along
 // with the user's own rep count, which is the label that makes the trace
 // useful.
 //
 // Everything here is a no-op while debug logging is off (see ./flag.ts), so
-// the per-frame cost for a normal user is one boolean check.
+// the per-frame cost for a normal user is one boolean check. The pieces:
+// ./activeSet (buffer + context), ./flatten (payload), ./persist (storage).
 
-import { getGpuStatus } from "../gpuStatus";
-import { getSettings } from "@/data/settings/settings";
 import type { Landmark } from "../helpers";
-import type { Side } from "../exercises/types";
 import { getDebugOptions, isDebugLogging } from "./flag";
 import { resetImageStats, sampleImageStats } from "./frameStats";
-import {
-  getOrientation,
-  getScreenOrientationAngle,
-  startOrientation,
-  stopOrientation,
-} from "./deviceOrientation";
+import { getOrientation, startOrientation, stopOrientation } from "./deviceOrientation";
 import { maybeCapture } from "./keyframes";
-import { putSetLog, putSetVideo } from "./logDb";
-import { startVideoCapture, type VideoCapture } from "./videoCapture";
-import { POSE_OPTIONS } from "@/hooks/useMediapipe";
-import type {
-  FrameMeta,
-  FrameSample,
-  GroundTruthEvent,
-  ImageStats,
-  SetLog,
-  SetCycles,
-  SetLogContext,
-  TrackerDebug,
-} from "./types";
+import {
+  createActiveSet, pushFrame, MAX_FRAMES, MAX_KEYFRAMES,
+  type ActiveSet, type BeginSetArgs,
+} from "./activeSet";
+import { flattenScreen, flattenWorld } from "./flatten";
+import { persistSet, type SetResult } from "./persist";
+import type { FrameMeta, FrameSample, GroundTruthEvent, ImageStats, TrackerDebug } from "./types";
 
-// ~3 minutes at 30 fps. Past this the ring wraps and the oldest frames go —
-// a set that runs longer than this is not the interesting case.
-const MAX_FRAMES = 5400;
-const MAX_KEYFRAMES = 120;
-
-/** Landmark subset logged when fullLandmarks is off — the joints trackers read. */
-const CORE_LANDMARKS = [0, 11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28];
-
-// Injected by vite.config.ts. Read defensively: these are bare globals rather
-// than imports, so if the define ever fails to apply — a dev server started
-// before the config changed, a test runner, an unusual bundler — referencing
-// them directly throws a ReferenceError and takes the whole set down. A trace
-// with an unknown build id is worth far more than a crashed workout.
-const BUILD = {
-  id: typeof __BUILD_ID__ === "string" ? __BUILD_ID__ : "unknown",
-  time: typeof __BUILD_TIME__ === "string" ? __BUILD_TIME__ : "",
-};
-
-export interface BeginSetArgs {
-  video: HTMLVideoElement | null;
-  stream: MediaStream | null;
-  exercise: string;
-  targetReps: number;
-  weight: number;
-  isAmrap: boolean;
-  side: Side | null;
-  unilateral: boolean;
-  workoutIdx: number;
-  setIdx: number;
-  poseModel: string;
-  calibration: SetLogContext["calibration"];
-}
-
-interface ActiveSet {
-  id: string;
-  startedAt: number;
-  t0: number;
-  context: SetLogContext;
-  video: HTMLVideoElement | null;
-  /** Circular frame buffer. */
-  buf: (FrameSample | undefined)[];
-  head: number;
-  wrapped: boolean;
-  events: GroundTruthEvent[];
-  keyframes: { t: number; dataUrl: string }[];
-  lastKeyframeAt: number;
-  hiddenSince: number | null;
-  repTaps: number[];
-  videoCapture: VideoCapture | null;
-}
+export type { BeginSetArgs } from "./activeSet";
 
 let active: ActiveSet | null = null;
 let visibilityBound = false;
@@ -107,10 +45,9 @@ export interface LiveStats {
 
 export function getLiveStats(): LiveStats {
   if (!active) return { recording: false, frames: 0, droppedFrames: 0, elapsedMs: 0 };
-  const frames = active.wrapped ? MAX_FRAMES : active.head;
   return {
     recording: true,
-    frames,
+    frames: active.wrapped ? MAX_FRAMES : active.head,
     droppedFrames: active.wrapped ? active.head : 0,
     elapsedMs: performance.now() - active.t0,
   };
@@ -136,57 +73,7 @@ export function beginSet(args: BeginSetArgs): void {
   resetImageStats();
   bindVisibility();
 
-  const gpu = getGpuStatus();
-  const settings = getSettings();
-  const video = args.video;
-  const track = args.stream?.getVideoTracks()[0] ?? null;
-
-  active = {
-    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    startedAt: Date.now(),
-    t0: performance.now(),
-    video,
-    buf: new Array(MAX_FRAMES),
-    head: 0,
-    wrapped: false,
-    events: [],
-    keyframes: [],
-    lastKeyframeAt: -Infinity,
-    hiddenSince: null,
-    repTaps: [],
-    // Records the raw camera stream so upstream changes (resolution, model,
-    // confidence params) can be re-run offline against the same movement.
-    videoCapture: opts.video ? startVideoCapture(args.stream) : null,
-    context: {
-      exercise: args.exercise,
-      targetReps: args.targetReps,
-      weight: args.weight,
-      isAmrap: args.isAmrap,
-      side: args.side,
-      unilateral: args.unilateral,
-      workoutIdx: args.workoutIdx,
-      setIdx: args.setIdx,
-      cameraSettings: track ? safeTrackSettings(track) : null,
-      videoWidth: video?.videoWidth ?? 0,
-      videoHeight: video?.videoHeight ?? 0,
-      screenOrientation: getScreenOrientationAngle(),
-      gpu: {
-        renderer: gpu.renderer,
-        hardwareAccelerated: gpu.hardwareAccelerated,
-        webglAvailable: gpu.webglAvailable,
-      },
-      userAgent: navigator.userAgent,
-      hardwareConcurrency: navigator.hardwareConcurrency ?? null,
-      deviceMemory: deviceMemory(),
-      devicePixelRatio: window.devicePixelRatio,
-      heightCm: settings.heightCm,
-      poseModel: args.poseModel,
-      build: BUILD,
-      poseOptions: { ...POSE_OPTIONS },
-      landmarkIndices: opts.fullLandmarks ? null : CORE_LANDMARKS,
-      calibration: args.calibration,
-    },
-  };
+  active = createActiveSet(args, opts);
 }
 
 /**
@@ -225,10 +112,7 @@ export function recordFrame(
     reps,
   };
   if (a.hiddenSince != null) sample.hidden = true;
-
-  a.buf[a.head % MAX_FRAMES] = sample;
-  a.head++;
-  if (a.head >= MAX_FRAMES) a.wrapped = true;
+  pushFrame(a, sample);
 
   if (opts.keyframes && a.video && a.keyframes.length < MAX_KEYFRAMES) {
     const kf = maybeCapture(a.video, t, a.lastKeyframeAt);
@@ -271,46 +155,11 @@ export function getRepTapCount(): number {
  * pass null when they didn't supply one. Returns the stored log id, or null
  * when nothing was being recorded.
  */
-export async function endSet(result: {
-  countedReps: number | null;
-  actualReps?: number | null;
-  note?: string | null;
-  cycles?: SetCycles | null;
-}): Promise<string | null> {
+export async function endSet(result: SetResult): Promise<string | null> {
   const a = active;
   active = null;
   if (!a) return null;
-
-  // Stop the recording before assembling the log so its size can be recorded.
-  const video = a.videoCapture ? await a.videoCapture.stop() : null;
-
-  const log: SetLog = {
-    id: a.id,
-    startedAt: a.startedAt,
-    endedAt: Date.now(),
-    context: a.context,
-    frames: drain(a),
-    truncated: a.wrapped,
-    events: a.events,
-    countedReps: result.countedReps,
-    actualReps: result.actualReps ?? null,
-    note: result.note ?? null,
-    keyframes: a.keyframes,
-    cycles: result.cycles ?? null,
-    repTaps: a.repTaps,
-    video: video ? { mimeType: video.mimeType, bytes: video.blob.size } : null,
-  };
-
-  try {
-    await putSetLog(log);
-    if (video) await putSetVideo(log.id, video.blob);
-    return log.id;
-  } catch (e) {
-    // Quota or a blocked upgrade — losing a diagnostic trace must never break
-    // the workout, so this is swallowed with a console note.
-    console.warn("[tracking-log] failed to persist set log", e);
-    return null;
-  }
+  return persistSet(a, result);
 }
 
 /** Throw away the in-progress set without persisting it. */
@@ -326,66 +175,6 @@ export function teardown(): void {
   stopOrientation();
 }
 
-// ── internals ────────────────────────────────────────────────────────────────
-
-/** Read the circular buffer back in chronological order. */
-function drain(a: ActiveSet): FrameSample[] {
-  const out: FrameSample[] = [];
-  const n = a.wrapped ? MAX_FRAMES : a.head;
-  const start = a.wrapped ? a.head % MAX_FRAMES : 0;
-  for (let i = 0; i < n; i++) {
-    const f = a.buf[(start + i) % MAX_FRAMES];
-    if (f) out.push(f);
-  }
-  return out;
-}
-
-// Landmarks are the bulk of the payload, so they go in flat and rounded rather
-// than as objects: 4 numbers per screen landmark (x, y, z, visibility) and 3
-// per world landmark (x, y, z in metres).
-function flattenScreen(lms: Landmark[] | null, full: boolean): number[] | null {
-  if (!lms) return null;
-  const idx = full ? null : CORE_LANDMARKS;
-  const n = idx ? idx.length : lms.length;
-  const out = new Array<number>(n * 4);
-  for (let i = 0; i < n; i++) {
-    const lm = lms[idx ? idx[i] : i];
-    const o = i * 4;
-    if (!lm) {
-      out[o] = out[o + 1] = out[o + 2] = out[o + 3] = NaN;
-      continue;
-    }
-    out[o] = r4(lm.x);
-    out[o + 1] = r4(lm.y);
-    out[o + 2] = r4(lm.z);
-    out[o + 3] = lm.visibility == null ? NaN : r4(lm.visibility);
-  }
-  return out;
-}
-
-function flattenWorld(lms: Landmark[] | null, full: boolean): number[] | null {
-  if (!lms) return null;
-  const idx = full ? null : CORE_LANDMARKS;
-  const n = idx ? idx.length : lms.length;
-  const out = new Array<number>(n * 3);
-  for (let i = 0; i < n; i++) {
-    const lm = lms[idx ? idx[i] : i];
-    const o = i * 3;
-    if (!lm) {
-      out[o] = out[o + 1] = out[o + 2] = NaN;
-      continue;
-    }
-    out[o] = r4(lm.x);
-    out[o + 1] = r4(lm.y);
-    out[o + 2] = r4(lm.z);
-  }
-  return out;
-}
-
-function r4(v: number): number {
-  return Math.round(v * 1e4) / 1e4;
-}
-
 // A backgrounded tab stops rAF entirely, which looks identical to a tracker
 // that stopped counting. Flagging the frames either side of a hide makes that
 // unambiguous when reading the trace back.
@@ -396,17 +185,4 @@ function bindVisibility() {
     if (!active) return;
     active.hiddenSince = document.hidden ? performance.now() : null;
   });
-}
-
-function safeTrackSettings(track: MediaStreamTrack): Record<string, unknown> | null {
-  try {
-    return { ...track.getSettings(), readyState: track.readyState, label: track.label };
-  } catch {
-    return null;
-  }
-}
-
-function deviceMemory(): number | null {
-  const v = (navigator as Navigator & { deviceMemory?: number }).deviceMemory;
-  return typeof v === "number" ? v : null;
 }

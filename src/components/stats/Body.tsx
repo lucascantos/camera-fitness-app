@@ -14,8 +14,10 @@ import {
   seriesFor,
   type BodyField,
 } from "@/data/body/body";
-import { getSettings, updateSettings } from "@/data/settings/settings";
+import { getSettings } from "@/data/settings/settings";
 import { LineChart } from "./charts";
+import { ProfileCard, SummaryTile } from "./body/parts";
+import { fmt, fmtDate, printValue } from "./body/format";
 
 export function Body() {
   const [ready, setReady] = useState(false);
@@ -168,86 +170,4 @@ export function Body() {
       </aside>
     </div>
   );
-}
-
-// ────────────────────────────────────────────────────────────────────────
-// Subcomponents
-// ────────────────────────────────────────────────────────────────────────
-
-function ProfileCard({ onUpdated }: { onUpdated(): void }) {
-  const s = getSettings();
-  const [name,    setName]    = useState(s.name);
-  const [height,  setHeight]  = useState(s.heightCm ? String(s.heightCm) : "");
-
-  const save = async () => {
-    await updateSettings({
-      name,
-      initials: (name.split(/\s+/).map((p) => p[0]?.toUpperCase() ?? "").join("") || "ME").slice(0, 2),
-      heightCm: Number(height) || 0,
-    });
-    onUpdated();
-  };
-
-  return (
-    <div className="bg-panel rounded-3xl border border-border shadow-card p-5">
-      <div className="text-[11px] font-bold tracking-widest text-gray-dark mb-3">
-        PROFILE
-      </div>
-      <label className="text-xs text-gray-dark">Name</label>
-      <input
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        placeholder="Your name"
-        className="w-full mt-1 bg-panel-dark border border-border rounded-xl px-3 py-2 text-ink outline-none focus:border-accent"
-      />
-      <label className="text-xs text-gray-dark mt-3 block">Height (cm)</label>
-      <input
-        type="number"
-        value={height}
-        onChange={(e) => setHeight(e.target.value)}
-        placeholder="e.g. 178"
-        className="w-full mt-1 bg-panel-dark border border-border rounded-xl px-3 py-2 text-ink outline-none focus:border-accent"
-      />
-      <button
-        onClick={save}
-        className="w-full mt-3 py-2.5 rounded-xl bg-nav text-white font-bold hover:bg-ink transition"
-      >
-        Save profile
-      </button>
-    </div>
-  );
-}
-
-function SummaryTile({
-  label, value, sub,
-}: { label: string; value: string; sub: string }) {
-  return (
-    <div className="bg-panel-dark rounded-2xl border border-border p-4">
-      <div className="text-[10px] font-bold tracking-widest text-gray-dark">
-        {label}
-      </div>
-      <div className="text-3xl font-extrabold text-ink mt-1">{value}</div>
-      <div className="text-xs text-gray-dark mt-0.5">{sub}</div>
-    </div>
-  );
-}
-
-// ────────────────────────────────────────────────────────────────────────
-// Helpers
-// ────────────────────────────────────────────────────────────────────────
-
-function fmt(v: number | undefined, unit: string): string {
-  if (v == null) return "—";
-  return `${printValue(v)} ${unit}`;
-}
-
-function printValue(n: number): string {
-  return Number.isInteger(n) ? String(n) : n.toFixed(1);
-}
-
-const MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-function fmtDate(iso: string): string {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
-  if (!m) return iso;
-  return `${MONTHS_SHORT[Number(m[2]) - 1]} ${Number(m[3])}`;
 }

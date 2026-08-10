@@ -9,6 +9,7 @@ import { getSettings } from "@/data/settings/settings";
 import { say } from "@/data/trainers/say";
 import { PlayIcon } from "@/components/icons";
 import { TrainerPanel } from "@/components/trainer/TrainerPanel";
+import { titleCase } from "@/lib/format";
 
 export function NextExercise() {
   const { session, workoutIdx, goTo } = useSessionStore();
@@ -91,8 +92,4 @@ function setsSummary(sets: SessionSet[]): string {
   const [reps, weight] = first;
   const load = weight > 0 ? `${weight} kg` : "bodyweight";
   return `${n} × ${reps} reps · ${load}`;
-}
-
-function titleCase(s: string) {
-  return s.replace(/\b\w/g, (c) => c.toUpperCase());
 }

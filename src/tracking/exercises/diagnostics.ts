@@ -53,6 +53,33 @@ export function crossCheckAngle(
 }
 
 /**
+ * Named secondary angles for one frame: the tracker's configured aux triples,
+ * plus its first posture constraint. Diagnostics only — nothing here gates
+ * counting. Returns undefined when none of them could be measured.
+ */
+export function collectAux(
+  lms: Landmark[],
+  planar: boolean,
+  auxAngles?: Record<string, [number, number, number]>,
+  postureTriple?: [number, number, number],
+): Record<string, number> | undefined {
+  let aux: Record<string, number> | undefined;
+  if (auxAngles) {
+    aux = {};
+    for (const [key, t] of Object.entries(auxAngles)) {
+      const v = crossCheckAngle(lms, t, planar);
+      if (v !== null) aux[key] = v;
+    }
+    if (Object.keys(aux).length === 0) aux = undefined;
+  }
+  if (postureTriple) {
+    const pa = crossCheckAngle(lms, postureTriple, planar);
+    if (pa !== null) aux = { ...(aux ?? {}), posture: pa };
+  }
+  return aux;
+}
+
+/**
  * Classify why the frame didn't produce a rep, from the state machine's own
  * variables. `flipped` is whether state changed on this frame, `counted`
  * whether the count went up.

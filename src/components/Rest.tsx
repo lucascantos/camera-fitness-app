@@ -3,9 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useSessionStore } from "@/stores/sessionStore";
 import { getSettings } from "@/data/settings/settings";
-import { say } from "@/data/trainers/say";
 import { restTick } from "@/audio/sfx";
-import { TrainerPanel } from "@/components/trainer/TrainerPanel";
 
 export function Rest() {
   const duration = getSettings().restSeconds;
@@ -14,7 +12,6 @@ export function Rest() {
   const tickedRef = useRef<Set<number>>(new Set());
 
   useEffect(() => {
-    say("rest");
     setRemaining(duration);
     tickedRef.current = new Set();
     const start = Date.now();
@@ -32,14 +29,9 @@ export function Rest() {
   }, [duration, goTo]);
 
   const pct = Math.max(0, (remaining / duration) * 100);
-  const trainerOn = getSettings().trainerEnabled;
-  const gridCls = trainerOn
-    ? "flex flex-col gap-6 p-4 lg:grid lg:grid-cols-[260px_1fr] lg:p-10 lg:h-full"
-    : "p-4 lg:p-10 lg:h-full";
 
   return (
-    <div className={gridCls}>
-      {trainerOn && <TrainerPanel characterHeight={300} />}
+    <div className="p-4 lg:p-10 lg:h-full">
       <div>
         <div className="bg-panel rounded-3xl p-6 lg:p-10 max-w-3xl border border-border shadow-card">
           <div className="text-accent text-3xl font-extrabold">REST</div>

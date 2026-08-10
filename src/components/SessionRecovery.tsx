@@ -5,10 +5,7 @@
 import { useSessionStore } from "@/stores/sessionStore";
 import { useDismissable } from "@/hooks/useDismissable";
 import { PlayIcon } from "@/components/icons";
-
-function titleCase(s: string) {
-  return s.replace(/\b\w/g, (c) => c.toUpperCase());
-}
+import { titleCase } from "@/lib/format";
 
 export function SessionRecovery({ onDismiss }: { onDismiss(): void }) {
   const { session, workoutIdx, setIdx, goTo, endSession } = useSessionStore();

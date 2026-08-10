@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { getSettings, loadSettings } from "@/data/settings/settings";
+import { loadSettings } from "@/data/settings/settings";
 import { requestPersistentStorage } from "@/data/db";
 import { loadAthlete } from "@/data/athlete/athlete";
+import { loadConsult } from "@/data/consult/consult";
 import { useSessionStore, loadPersistedSession } from "@/stores/sessionStore";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import { unlockAudio } from "@/audio/sfx";
@@ -18,6 +19,7 @@ import { NextExercise }      from "@/components/NextExercise";
 import { Complete }          from "@/components/Complete";
 import { Stats }             from "@/components/Stats";
 import { Settings }          from "@/components/Settings";
+import { Coach }             from "@/components/Coach";
 import { SessionRecovery }   from "@/components/SessionRecovery";
 
 export default function App() {
@@ -25,18 +27,24 @@ export default function App() {
   const [ready, setReady] = useState(false);
   const [showRecovery, setShowRecovery] = useState(false);
 
-  // Scenes that hide TopNav (full-screen workout flow).
-  const fullscreen =
+  // The full-screen workout flow.
+  const workoutFlow =
     scene === "training" || scene === "rest" ||
     scene === "transition" || scene === "complete";
 
+  // Scenes that hide TopNav and BottomNav. The consultation joins the workout
+  // flow here: it's an intro sequence, and a tab bar sitting under it would
+  // undercut the takeover (and offer an exit that "Skip" already provides).
+  const chromeless = workoutFlow || scene === "coach";
+
   // Keep the screen awake for the whole workout flow (training + rest +
   // transition + complete), where the user often isn't touching the phone.
+  // The consultation is deliberately excluded — the user is tapping through it.
   // Called before the `!ready` early return to satisfy the rules of hooks.
-  useWakeLock(fullscreen);
+  useWakeLock(workoutFlow);
 
   useEffect(() => {
-    Promise.all([loadSettings(), loadAthlete()]).then(async () => {
+    Promise.all([loadSettings(), loadAthlete(), loadConsult()]).then(async () => {
       const persisted = await loadPersistedSession();
       if (persisted) setShowRecovery(true);
       setReady(true);
@@ -73,13 +81,13 @@ export default function App() {
 
   return (
     <div className="h-full flex flex-col bg-bg safe-area">
-      {!fullscreen && <TopNav initials={getSettings().initials} />}
+      {!chromeless && <TopNav />}
       {/* Bottom padding reserves room for the fixed BottomNav (56px bar +
           safe-area inset) so the last card is never trapped behind it. */}
       <main
         className="flex-1 overflow-auto"
         style={
-          fullscreen
+          chromeless
             ? undefined
             : { paddingBottom: "calc(56px + env(safe-area-inset-bottom))" }
         }
@@ -93,8 +101,9 @@ export default function App() {
         {scene === "complete"    && <Complete     />}
         {scene === "stats"     && <Stats     />}
         {scene === "settings"  && <Settings  />}
+        {scene === "coach"     && <Coach     />}
       </main>
-      {!fullscreen && <BottomNav />}
+      {!chromeless && <BottomNav />}
       {showRecovery && (
         <SessionRecovery onDismiss={() => setShowRecovery(false)} />
       )}

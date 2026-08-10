@@ -66,6 +66,13 @@ export default {
           "40%":  { transform: "scale(1.22)" },
           "100%": { transform: "scale(1)" },
         },
+        // Idle "alive" motion for a static character portrait. Deliberately
+        // constant and slow: tying any portrait movement to the dialogue makes
+        // the character twitch on every line, which reads as a glitch.
+        breathe: {
+          "0%, 100%": { transform: "scale(1)" },
+          "50%":      { transform: "scale(1.015)" },
+        },
         // Set finished / arm switched: one pulse of the whole rep bar.
         "pulse-once": {
           "0%":   { transform: "scale(1)" },
@@ -83,6 +90,7 @@ export default {
         "dialog-in":  "dialog-in 180ms cubic-bezier(0.22,1,0.36,1) both",
         "dialog-out": "dialog-out 160ms ease-in both",
         pop:          "pop 220ms cubic-bezier(0.34,1.56,0.64,1) both",
+        breathe:      "breathe 5s ease-in-out infinite",
         "pulse-once": "pulse-once 320ms ease-out both",
       },
     },

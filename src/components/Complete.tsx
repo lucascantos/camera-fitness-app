@@ -5,10 +5,8 @@ import { useSessionStore } from "@/stores/sessionStore";
 import { awardSession, getAthlete, saveAthlete } from "@/data/athlete/athlete";
 import { loadPlans, type Plan } from "@/data/plans/plans";
 import { getStrategy } from "@/data/progressions";
-import { say } from "@/data/trainers/say";
 import { fanfare } from "@/audio/sfx";
-import { getSettings } from "@/data/settings/settings";
-import { TrainerPanel } from "@/components/trainer/TrainerPanel";
+import { titleCase } from "@/lib/format";
 
 export function Complete() {
   const { session, endSession } = useSessionStore();
@@ -16,8 +14,7 @@ export function Complete() {
 
   useEffect(() => {
     if (!session) return;
-    // Trainer line + ascending fanfare on enter.
-    say("complete");
+    // Ascending fanfare on enter.
     fanfare();
 
     let repCoins = 0;
@@ -66,14 +63,8 @@ export function Complete() {
   );
   const totalSets = session.workouts.reduce((s, w) => s + w.sets.length, 0);
 
-  const trainerOn = getSettings().trainerEnabled;
-  const gridCls = trainerOn
-    ? "flex flex-col gap-6 p-4 lg:grid lg:grid-cols-[260px_1fr] lg:p-10 lg:h-full"
-    : "p-4 lg:p-10 lg:h-full";
-
   return (
-    <div className={gridCls}>
-      {trainerOn && <TrainerPanel characterHeight={320} />}
+    <div className="p-4 lg:p-10 lg:h-full">
       <div className="bg-panel rounded-3xl p-6 lg:p-10 max-w-3xl border border-border shadow-card">
         <div className="text-accent text-5xl font-black leading-none">SESSION</div>
         <div className="text-accent text-5xl font-black leading-none">COMPLETE!</div>
@@ -118,5 +109,3 @@ function Row({ val, note }: { val: string; note?: string }) {
     </div>
   );
 }
-
-function titleCase(s: string) { return s.replace(/\b\w/g, (c) => c.toUpperCase())}

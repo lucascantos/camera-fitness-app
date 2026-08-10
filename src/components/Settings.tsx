@@ -1,19 +1,20 @@
 // Ported from: scenes/settings_overlay.py (legacy FitnessApp repo)
-// Rendered as a full page here instead of an overlay.
+// Rendered as a full page here instead of an overlay. The self-contained
+// sections live under ./settings/.
 
 import { useState } from "react";
 import { getSettings, updateSettings, type Theme } from "@/data/settings/settings";
-import { useDataTransfer } from "@/hooks/useDataTransfer";
-import { useInstallPrompt } from "@/hooks/useInstallPrompt";
 import { applyMusicVolume } from "@/audio/music";
 import { repBeep, setCompleteChime } from "@/audio/sfx";
-import { playVoice } from "@/audio/voice";
 import { say, setTrainer } from "@/data/trainers/say";
 import { TRAINERS } from "@/data/trainers";
 import { TrainerAvatar } from "@/components/trainer/TrainerAvatar";
 import { POSE_STYLES } from "@/tracking/poseRenderer";
 import { getGpuStatus } from "@/tracking/gpuStatus";
 import { TrackingDebugSection } from "@/components/TrackingDebugSection";
+import { Group, Pill, Slider, ToggleRow } from "./settings/controls";
+import { InstallSection } from "./settings/InstallSection";
+import { DataSection } from "./settings/DataSection";
 
 const THEMES: { id: Theme; label: string }[] = [
   { id: "fitpop", label: "Light" },
@@ -43,12 +44,8 @@ export function Settings() {
       <Slider
         label="Voice"
         value={s.voiceVol}
-        onChange={async (v) => {
-          await set({ voiceVol: v });
-          // Preview: speak a short line at the new volume.
-          say("rep");
-          void playVoice;            // keep import live for tree-shaking diags
-        }}
+        // Preview: speak a short line at the new volume.
+        onChange={async (v) => { await set({ voiceVol: v }); say("rep"); }}
       />
       <Slider
         label="SFX"
@@ -168,158 +165,6 @@ export function Settings() {
       <InstallSection />
       <DataSection />
       <TrackingDebugSection />
-    </div>
-  );
-}
-
-// Standalone-install affordance. Chrome/Edge/Android surface an install
-// button once the browser decides the app qualifies (manifest + service
-// worker + HTTPS); iOS Safari has no such API, so it gets manual
-// instructions instead. Renders nothing once already installed.
-function InstallSection() {
-  const { canInstall, installed, promptInstall } = useInstallPrompt();
-  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
-
-  if (installed) return null;
-  if (!canInstall && !isIos) return null;
-
-  return (
-    <div className="mt-8 border-t border-border pt-6">
-      <div className="font-bold mb-1">Install app</div>
-      {canInstall ? (
-        <>
-          <p className="text-sm text-gray-dark mb-3">
-            Install Camera Fitness on this device for a full-screen, app-like
-            experience — no browser address bar, and it launches from its own
-            icon.
-          </p>
-          <button
-            onClick={() => void promptInstall()}
-            className="px-4 py-2 rounded-2xl text-sm font-semibold bg-accent text-on_accent hover:bg-accent-hov transition"
-          >
-            Install app
-          </button>
-        </>
-      ) : (
-        <p className="text-sm text-gray-dark">
-          Add to your home screen: tap the Share icon in Safari, then
-          “Add to Home Screen”.
-        </p>
-      )}
-    </div>
-  );
-}
-
-// Export/import (Save/Load) the full app database as a JSON file. Import
-// replaces all data and reloads so the in-memory store caches rehydrate.
-// Shares its wiring with the Save/Load bar under the header.
-function DataSection() {
-  const { fileRef, status, save, pickFile, onFileChange } = useDataTransfer();
-
-  return (
-    <div className="mt-8 border-t border-border pt-6">
-      <div className="font-bold mb-1">Data</div>
-      <p className="text-sm text-gray-dark mb-3">
-        Your data lives only in this browser. Save a backup to keep it or move
-        it to another device, then load it back here.
-      </p>
-      <div className="flex flex-wrap gap-2">
-        <button
-          onClick={save}
-          className="px-4 py-2 rounded-2xl text-sm font-semibold bg-accent text-on_accent hover:bg-accent-hov transition"
-        >
-          Save data
-        </button>
-        <button
-          onClick={pickFile}
-          className="px-4 py-2 rounded-2xl text-sm font-semibold bg-panel-dark text-ink border border-border hover:bg-bg transition"
-        >
-          Load data
-        </button>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="application/json,.json"
-          onChange={onFileChange}
-          className="hidden"
-        />
-      </div>
-      {status && (
-        <div className={"text-sm mt-3 " + (status.kind === "ok" ? "text-good" : "text-accent")}>
-          {status.msg}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// A bold section label with an on/off switch on the same row. The caller
-// shows the section's options only while `on` is true.
-function ToggleRow({ label, on, onToggle }: {
-  label: string; on: boolean; onToggle(on: boolean): void;
-}) {
-  return (
-    <div className="flex items-center justify-between">
-      <div className="font-bold">{label}</div>
-      <button
-        role="switch"
-        aria-checked={on}
-        aria-label={label}
-        onClick={() => onToggle(!on)}
-        className={
-          "relative w-11 h-6 rounded-full transition-colors " +
-          (on ? "bg-accent" : "bg-panel-dark border border-border")
-        }
-      >
-        <span
-          className={
-            "absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-panel shadow transition-transform " +
-            (on ? "translate-x-5" : "")
-          }
-        />
-      </button>
-    </div>
-  );
-}
-
-function Group({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="mt-6">
-      <div className="font-bold mb-2">{label}</div>
-      <div className="flex flex-wrap gap-2">{children}</div>
-    </div>
-  );
-}
-
-function Pill({ selected, onClick, children }: {
-  selected: boolean; onClick(): void; children: React.ReactNode;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={
-        "px-4 py-1.5 rounded-full text-sm font-semibold transition " +
-        (selected ? "bg-accent text-on_accent" : "bg-panel-dark text-gray border border-border")
-      }
-    >
-      {children}
-    </button>
-  );
-}
-
-function Slider({ label, value, onChange }:
-  { label: string; value: number; onChange(v: number): void }) {
-  return (
-    <div className="mt-5">
-      <div className="flex justify-between items-baseline">
-        <div className="font-bold">{label}</div>
-        <div className="text-sm text-gray-dark">{Math.round(value * 100)}%</div>
-      </div>
-      <input
-        type="range" min={0} max={1} step={0.01} value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full accent-accent"
-      />
     </div>
   );
 }

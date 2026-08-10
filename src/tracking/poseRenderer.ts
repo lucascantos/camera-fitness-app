@@ -1,19 +1,14 @@
 // Pose overlay renderer with several display styles + temporal smoothing.
 //
 // The raw MediaPipe landmarks jitter frame-to-frame. This renderer keeps
-// per-landmark state so it can low-pass ("lerp") or spring-smooth the
-// positions before drawing, and offers softer visual styles (aura / polygons)
-// that read better than the bare stick figure.
+// per-landmark state so it can spring-smooth the positions before drawing.
+// The styles themselves live in ./poseStyles:
 //
-// Styles:
-//   skeleton  – crisp lines + dots, no smoothing (the original look).
-//   lerp      – skeleton, exponentially smoothed:  d += (target - d) * alpha
-//   spring    – skeleton, spring-damped:           v += (target - d) * k; v *= damp; d += v
-//   blob      – soft blurred aura following the body.
-//   polygons  – faceted body panels (torso quad + tapered limb quads).
+//   spring – skeleton, spring-damped:  v += (target - d) * k; v *= damp; d += v
+//   blob   – soft blurred aura following the body, with a motion trail.
 
 import type { Landmark } from "./helpers";
-import { POSE_CONNECTIONS } from "./drawPose";
+import { drawBlob, drawSkeleton, type Pt } from "./poseStyles";
 
 export type PoseStyle = "spring" | "blob" | "off";
 
@@ -23,7 +18,6 @@ export const POSE_STYLES: { id: PoseStyle; label: string; hint: string }[] = [
   { id: "off",    label: "Off",   hint: "Hide the overlay" },
 ];
 
-const COLOR = "#00E07A";
 const MIN_VISIBILITY = 0.5;
 
 // Which smoothing each style uses.
@@ -33,18 +27,9 @@ const SMOOTHING: Record<PoseStyle, "none" | "spring"> = {
   off: "none",
 };
 
-// Aura: fraction of the previous frame erased each tick. Lower = longer trail.
-const BLOB_FADE = 0.16;
-
 // Spring constants.
 const STIFFNESS = 0.30;
 const DAMPING = 0.55;
-
-interface Pt {
-  x: number;
-  y: number;
-  v: number;
-}
 
 export interface PoseRenderer {
   draw(
@@ -134,89 +119,4 @@ export function createPoseRenderer(): PoseRenderer {
   }
 
   return { draw, reset };
-}
-
-// ── Style renderers ───────────────────────────────────────────────────────
-
-function drawSkeleton(ctx: CanvasRenderingContext2D, pts: (Pt | null)[], w: number, h: number) {
-  ctx.strokeStyle = COLOR;
-  ctx.lineWidth = 2.5;
-  ctx.lineCap = "round";
-  for (const [a, b] of POSE_CONNECTIONS) {
-    const p1 = pts[a];
-    const p2 = pts[b];
-    if (!p1 || !p2) continue;
-    ctx.beginPath();
-    ctx.moveTo(p1.x * w, p1.y * h);
-    ctx.lineTo(p2.x * w, p2.y * h);
-    ctx.stroke();
-  }
-  ctx.fillStyle = COLOR;
-  for (const p of pts) {
-    if (!p) continue;
-    ctx.beginPath();
-    ctx.arc(p.x * w, p.y * h, 4, 0, Math.PI * 2);
-    ctx.fill();
-  }
-}
-
-function drawBlob(ctx: CanvasRenderingContext2D, pts: (Pt | null)[], w: number, h: number) {
-  // 1. Decay last frame instead of clearing — what remains is the trail.
-  //    destination-out erases `BLOB_FADE` of the existing alpha toward
-  //    transparent (not toward black), which keeps the overlay see-through.
-  ctx.save();
-  ctx.filter = "none";
-  ctx.globalCompositeOperation = "destination-out";
-  ctx.fillStyle = `rgba(0,0,0,${BLOB_FADE})`;
-  ctx.fillRect(0, 0, w, h);
-  ctx.restore();
-
-  // 2. Soft blurred aura at the current (raw, un-smoothed) position. Drawn over
-  //    the surviving trail so the glow appears to emanate and stream behind.
-  ctx.save();
-  ctx.filter = `blur(${Math.max(6, w * 0.012)}px)`;
-  ctx.strokeStyle = "rgba(0,224,122,0.5)";
-  ctx.fillStyle = "rgba(0,224,122,0.5)";
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-  const limbW = h * 0.05;
-  ctx.lineWidth = limbW;
-  for (const [a, b] of POSE_CONNECTIONS) {
-    const p1 = pts[a];
-    const p2 = pts[b];
-    if (!p1 || !p2) continue;
-    ctx.beginPath();
-    ctx.moveTo(p1.x * w, p1.y * h);
-    ctx.lineTo(p2.x * w, p2.y * h);
-    ctx.stroke();
-  }
-  fillIndexedPoly(ctx, pts, [11, 12, 24, 23], w, h, false);
-  for (const p of pts) {
-    if (!p) continue;
-    ctx.beginPath();
-    ctx.arc(p.x * w, p.y * h, limbW * 0.6, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.restore();
-}
-
-// ── Geometry helpers ──────────────────────────────────────────────────────
-
-function fillIndexedPoly(
-  ctx: CanvasRenderingContext2D,
-  pts: (Pt | null)[],
-  idx: number[],
-  w: number,
-  h: number,
-  stroke: boolean,
-) {
-  const ps = idx.map((i) => pts[i]);
-  if (ps.some((p) => !p)) return;
-  ctx.beginPath();
-  ps.forEach((p, i) =>
-    i ? ctx.lineTo(p!.x * w, p!.y * h) : ctx.moveTo(p!.x * w, p!.y * h),
-  );
-  ctx.closePath();
-  ctx.fill();
-  if (stroke) ctx.stroke();
 }
