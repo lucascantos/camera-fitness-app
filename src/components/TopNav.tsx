@@ -9,7 +9,7 @@
 // consultation and, later, everything else the coach owns.
 
 import { useSessionStore } from "@/stores/sessionStore";
-import { GearIcon } from "@/components/icons";
+import { GearIcon, DojoIcon } from "@/components/icons";
 import { CoachAvatar } from "@/components/trainer/CoachAvatar";
 
 export function TopNav() {
@@ -30,6 +30,14 @@ export function TopNav() {
           aria-label="Coach"
         >
           <CoachAvatar size={44} />
+        </button>
+        <button
+          onClick={() => goTo("dojo")}
+          className="w-11 h-11 rounded-full bg-panel border border-border grid place-items-center text-ink hover:bg-panel-dark transition"
+          title="Dojo"
+          aria-label="Dojo"
+        >
+          <DojoIcon size={18} />
         </button>
         <button
           onClick={() => goTo("settings")}

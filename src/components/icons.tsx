@@ -97,6 +97,15 @@ export function GearIcon({ size = 18 }: { size?: number }) {
   );
 }
 
+export function DojoIcon({ size = 18 }: { size?: number }) {
+  return (
+    <NavSvg size={size}>
+      <path d="M12 2L5 8v2l7 5 7-5V8z" />
+      <path d="M5 13v2l7 5 7-5v-2" />
+    </NavSvg>
+  );
+}
+
 export function FilterIcon({ size = 18 }: { size?: number }) {
   return (
     <NavSvg size={size}>
