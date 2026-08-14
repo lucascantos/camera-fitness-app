@@ -50,6 +50,11 @@ export function createAngleTracker(opts: AngleTrackerOptions): ExerciseTracker {
   let visSum = 0;
   let mirrorVisSum = 0;
   let usingMirror = false;
+  // Per-stream count offsets: when the active side flips, the newly-active
+  // stream's historical rep total is pinned to the current count so it can't
+  // inflate the display with reps counted before the switch.
+  let mirrorCountOffset = 0;
+  let primaryCountOffset = 0;
   let count = 0;
   let lastAngle: number | null = null;
   let formError: string | null = null;
@@ -71,6 +76,8 @@ export function createAngleTracker(opts: AngleTrackerOptions): ExerciseTracker {
     visSum = 0;
     mirrorVisSum = 0;
     usingMirror = false;
+    mirrorCountOffset = 0;
+    primaryCountOffset = 0;
     count = 0;
     cycles = [];
     restCycles = [];
@@ -161,6 +168,7 @@ export function createAngleTracker(opts: AngleTrackerOptions): ExerciseTracker {
         sampleMirror(lms, screen, angle);
       }
 
+      const prevUsingMirror = usingMirror;
       if (samples.length >= ADAPT_MIN_SAMPLES && ++sinceAdapt >= ADAPT_EVERY) {
         sinceAdapt = 0;
         // Choose the better-observed side before re-deriving thresholds, so the
@@ -174,9 +182,13 @@ export function createAngleTracker(opts: AngleTrackerOptions): ExerciseTracker {
       );
       cycles = r.cycles;
       restCycles = r.restCycles;
-      // Never let the displayed count go backwards when a revision reinterprets
-      // earlier frames — see the header note.
-      count = Math.max(count, r.count);
+      // On a side switch, peg the new stream's historical count to the current
+      // total so the switch can't inflate the display — see the header note.
+      if (usingMirror !== prevUsingMirror) {
+        if (usingMirror) mirrorCountOffset = count - r.count;
+        else primaryCountOffset = count - r.count;
+      }
+      count = Math.max(count, r.count + (usingMirror ? mirrorCountOffset : primaryCountOffset));
 
       const activeSample = usingMirror
         ? mirrorSamples[mirrorSamples.length - 1]

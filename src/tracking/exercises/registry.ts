@@ -61,6 +61,16 @@ const TRICEPS_POSTURE: Record<Side, PostureConstraint[]> = {
   }],
 };
 
+// Posture: the body must be roughly horizontal for a push-up rep to count.
+// The shoulder–hip–knee angle stays near 170° when flat and collapses when
+// the user stands up, repositions the phone, or gets up after a set — all
+// three phantom-rep scenarios seen in captured traces.
+const PUSHUP_POSTURE: PostureConstraint[] = [{
+  landmarks: [LM.RIGHT_SHOULDER, LM.RIGHT_HIP, LM.RIGHT_KNEE],
+  range: [140, 180],
+  hint: "Keep your body straight",
+}];
+
 // MediaPipe pairs each joint as (left, right) with consecutive indices, so the
 // opposite side of any triple is a straight index swap.
 const MIRROR: Record<number, number> = {
@@ -99,6 +109,7 @@ const GEOMETRY: Record<string, Geometry> = {
 
   "push ups": {
     landmarks: [LM.RIGHT_SHOULDER, LM.RIGHT_ELBOW, LM.RIGHT_WRIST],
+    posture: PUSHUP_POSTURE,
     auxAngles: {
       // Sagging or piking is the classic push-up form break, and a horizontal
       // body is also where MediaPipe struggles most.
