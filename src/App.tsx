@@ -21,8 +21,6 @@ import { Stats }             from "@/components/Stats";
 import { Settings }          from "@/components/Settings";
 import { Coach }             from "@/components/Coach";
 import { SessionRecovery }   from "@/components/SessionRecovery";
-import { Dojo }              from "@/components/Dojo";
-import { loadDojo }          from "@/data/dojo/dojo";
 
 export default function App() {
   const { scene } = useSessionStore();
@@ -37,7 +35,7 @@ export default function App() {
   // Scenes that hide TopNav and BottomNav. The consultation joins the workout
   // flow here: it's an intro sequence, and a tab bar sitting under it would
   // undercut the takeover (and offer an exit that "Skip" already provides).
-  const chromeless = workoutFlow || scene === "coach" || scene === "dojo";
+  const chromeless = workoutFlow || scene === "coach";
 
   // Keep the screen awake for the whole workout flow (training + rest +
   // transition + complete), where the user often isn't touching the phone.
@@ -46,7 +44,7 @@ export default function App() {
   useWakeLock(workoutFlow);
 
   useEffect(() => {
-    Promise.all([loadSettings(), loadAthlete(), loadConsult(), loadDojo()]).then(async () => {
+    Promise.all([loadSettings(), loadAthlete(), loadConsult()]).then(async () => {
       const persisted = await loadPersistedSession();
       if (persisted) setShowRecovery(true);
       setReady(true);
@@ -104,7 +102,6 @@ export default function App() {
         {scene === "stats"     && <Stats     />}
         {scene === "settings"  && <Settings  />}
         {scene === "coach"     && <Coach     />}
-        {scene === "dojo"      && <Dojo      />}
       </main>
       {!chromeless && <BottomNav />}
       {showRecovery && (

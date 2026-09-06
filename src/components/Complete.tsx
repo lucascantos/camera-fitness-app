@@ -3,14 +3,13 @@
 import { useEffect, useState } from "react";
 import { useSessionStore } from "@/stores/sessionStore";
 import { awardSession, getAthlete, saveAthlete } from "@/data/athlete/athlete";
-import { awardPower, saveDojo } from "@/data/dojo/dojo";
 import { loadPlans, type Plan } from "@/data/plans/plans";
 import { getStrategy } from "@/data/progressions";
 import { fanfare } from "@/audio/sfx";
 import { titleCase } from "@/lib/format";
 
 export function Complete() {
-  const { session, endSession, sessionStartedAt } = useSessionStore();
+  const { session, endSession } = useSessionStore();
   const [totalCoins, setTotalCoins] = useState(0);
 
   useEffect(() => {
@@ -35,11 +34,6 @@ export function Complete() {
 
     (async () => {
       await awardSession(session.sessionId, exercises, total);
-
-      if (sessionStartedAt) {
-        awardPower((Date.now() - sessionStartedAt) / 1000);
-        await saveDojo();
-      }
 
       // If the session belongs to a plan, let the progression strategy
       // update working weights / TM / week index for next time.

@@ -9,7 +9,6 @@ export type SceneName =
   | "stats"
   | "settings"
   | "coach"
-  | "dojo"
   | "training"
   | "rest"
   | "transition"
@@ -20,7 +19,6 @@ interface SessionState {
   session: Session | null;
   workoutIdx: number;
   setIdx: number;
-  sessionStartedAt: number | null;
   goTo(scene: SceneName): void;
   startSession(session: Session): void;
   setCursor(workoutIdx: number, setIdx: number): void;
@@ -40,12 +38,11 @@ export const useSessionStore = create<SessionState>((set) => ({
   session: null,
   workoutIdx: 0,
   setIdx: 0,
-  sessionStartedAt: null,
   goTo: (scene) => set({ scene }),
   startSession: (session) =>
-    set({ session, workoutIdx: 0, setIdx: 0, scene: "training", sessionStartedAt: Date.now() }),
+    set({ session, workoutIdx: 0, setIdx: 0, scene: "training" }),
   setCursor: (workoutIdx, setIdx) => set({ workoutIdx, setIdx }),
-  endSession: () => set({ session: null, scene: "home", sessionStartedAt: null }),
+  endSession: () => set({ session: null, scene: "home" }),
 }));
 
 // Persist session state to IndexedDB whenever it changes.
