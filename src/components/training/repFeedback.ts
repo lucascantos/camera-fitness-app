@@ -22,5 +22,5 @@ export function announceRep(reps: number, target: number, amrap: boolean): void 
   else if (!amrap && target >= 4 && reps === Math.ceil(target / 2)) cat = "milestone_half";
   else if (amrap && reps % 5 === 0)                      cat = "rep";
   else if (!amrap && reps % 3 === 0)                     cat = "rep";
-  if (cat) say(cat);
+  if (cat) say(cat, { reps, target, amrap });
 }

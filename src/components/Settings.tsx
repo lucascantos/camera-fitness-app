@@ -140,7 +140,7 @@ export function Settings() {
                 <div>
                   <div className="font-bold text-ink">{t.name}</div>
                   <div className="text-xs text-gray-dark">
-                    {t.greetings[0] ?? ""}
+                    {t.tagline}
                   </div>
                 </div>
               </button>

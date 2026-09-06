@@ -4,15 +4,31 @@
     {
       "name": "Dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev:mobile"],
+      "runtimeArgs": [
+        "run",
+        "dev:mobile"
+      ],
       "url": "https://localhost:5173",
+      "port": 5173,
+      "autoPort": false
+    },
+    {
+      "name": "Dev (http)",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "port": 5173,
       "autoPort": false
     },
     {
       "name": "Production",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "preview"],
+      "runtimeArgs": [
+        "run",
+        "preview"
+      ],
       "port": 4173,
       "autoPort": false
     }

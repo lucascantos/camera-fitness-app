@@ -14,9 +14,9 @@
 // docs/calibration-devlog.md, finding 18.
 
 import { LM } from "../helpers";
-import type { ExerciseTracker, Side } from "./types";
+import type { ExerciseTracker } from "./types";
 import { createAngleTracker, type AngleTrackerOptions } from "./generic";
-import type { PostureConstraint } from "./posture";
+import { CURL_POSTURE, PUSHUP_POSTURE, TRICEPS_POSTURE } from "./postures";
 import { defaultAnchors } from "@/data/calibration/anchors";
 import { deriveThresholds, type Thresholds } from "@/data/calibration/derive";
 
@@ -34,42 +34,6 @@ export const TRACKED_EXERCISES = [
 
 /** Everything about an exercise except its thresholds. */
 type Geometry = Omit<AngleTrackerOptions, "name" | "workThreshold" | "restThreshold">;
-
-// Posture: the upper arm must hang at the side (elbow tucked). The angle at
-// the shoulder between the hip and the elbow stays small when the arm is down;
-// it grows when the arm is raised out to the side or overhead — which is the
-// cheat that was letting curls count from any arm position.
-const CURL_POSTURE: PostureConstraint[] = [{
-  landmarks: [LM.RIGHT_HIP, LM.RIGHT_SHOULDER, LM.RIGHT_ELBOW],
-  range: [0, 45],
-  hint: "Keep your elbow tucked at your side",
-}];
-
-// Posture: the upper arm must point up (elbow above the shoulder, overhead).
-// The hip–shoulder–elbow angle is large when the arm is raised; it shrinks if
-// the arm drops in front or out to the side.
-const TRICEPS_POSTURE: Record<Side, PostureConstraint[]> = {
-  right: [{
-    landmarks: [LM.RIGHT_HIP, LM.RIGHT_SHOULDER, LM.RIGHT_ELBOW],
-    range: [125, 180],
-    hint: "Keep your upper arm pointing up",
-  }],
-  left: [{
-    landmarks: [LM.LEFT_HIP, LM.LEFT_SHOULDER, LM.LEFT_ELBOW],
-    range: [125, 180],
-    hint: "Keep your upper arm pointing up",
-  }],
-};
-
-// Posture: the body must be roughly horizontal for a push-up rep to count.
-// The shoulder–hip–knee angle stays near 170° when flat and collapses when
-// the user stands up, repositions the phone, or gets up after a set — all
-// three phantom-rep scenarios seen in captured traces.
-const PUSHUP_POSTURE: PostureConstraint[] = [{
-  landmarks: [LM.RIGHT_SHOULDER, LM.RIGHT_HIP, LM.RIGHT_KNEE],
-  range: [140, 180],
-  hint: "Keep your body straight",
-}];
 
 // MediaPipe pairs each joint as (left, right) with consecutive indices, so the
 // opposite side of any triple is a straight index swap.
@@ -164,6 +128,11 @@ const GEOMETRY: Record<string, Geometry> = {
 /** The angle triple an exercise watches, for the session calibrator. */
 export function trackedLandmarks(exercise: string): [number, number, number] | null {
   return GEOMETRY[exercise]?.landmarks ?? null;
+}
+
+/** Whether the exercise is counted one side at a time (right arm, then left). */
+export function isUnilateral(exercise: string): boolean {
+  return Boolean(GEOMETRY[exercise]?.unilateral);
 }
 
 /** Returns a fresh tracker for the named exercise, or null for manual mode. */

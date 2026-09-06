@@ -4,12 +4,25 @@ import { useEffect, useRef, useState } from "react";
 import { useSessionStore } from "@/stores/sessionStore";
 import { getSettings } from "@/data/settings/settings";
 import { restTick } from "@/audio/sfx";
+import { say } from "@/data/trainers/say";
+import { useTrainerStore } from "@/stores/trainerStore";
+import { CoachLine } from "@/components/trainer/CoachLine";
 
 export function Rest() {
   const duration = getSettings().restSeconds;
   const [remaining, setRemaining] = useState(duration);
   const { goTo } = useSessionStore();
   const tickedRef = useRef<Set<number>>(new Set());
+
+  // The set-complete line is still on screen when Rest opens; let it sit,
+  // then hand over to a rest line once the user has had a moment. If the
+  // coach had nothing to say about the set, speak straight away.
+  useEffect(() => {
+    const hadLine = Date.now() - useTrainerStore.getState().at < 3000;
+    const delay = hadLine ? Math.min(duration * 400, 12_000) : 300;
+    const id = setTimeout(() => say("rest"), delay);
+    return () => clearTimeout(id);
+  }, [duration]);
 
   useEffect(() => {
     setRemaining(duration);
@@ -35,6 +48,7 @@ export function Rest() {
       <div>
         <div className="bg-panel rounded-3xl p-6 lg:p-10 max-w-3xl border border-border shadow-card">
           <div className="text-accent text-3xl font-extrabold">REST</div>
+          <CoachLine className="mt-4" />
           <div className="text-[5rem] lg:text-[8rem] font-black leading-none mt-4 text-ink">
             {Math.max(0, remaining)}
           </div>

@@ -8,32 +8,35 @@ import { useEffect, useState } from "react";
 import { useTrainerStore } from "@/stores/trainerStore";
 import { getSettings } from "@/data/settings/settings";
 import { currentTrainer, say } from "@/data/trainers/say";
+import type { ContextOverrides } from "@/data/trainers/context";
 import { TrainerAvatar } from "./TrainerAvatar";
 
 const BUBBLE_TOTAL_MS = 4500;
 const BUBBLE_FADE_MS  = 450;
+/** A line older than this when the panel mounts belongs to the previous scene. */
+const STALE_MS = 3000;
 
 interface Props {
   /** Speak `category` once on mount (e.g. "greeting" on Home). */
   initialLine?: Parameters<typeof say>[0];
-  initialExercise?: string;
+  initialContext?: ContextOverrides;
   /** Render at a fixed character height, or fill the column. */
   characterHeight?: number;
 }
 
 export function TrainerPanel({
   initialLine,
-  initialExercise,
+  initialContext,
   characterHeight = 320,
 }: Props) {
-  const { text, tick } = useTrainerStore();
+  const { text, tick, at } = useTrainerStore();
   const [bubbleShown,   setBubbleShown]   = useState(false);
   const [bubbleOpacity, setBubbleOpacity] = useState(0);
 
   // Speak the initial line once after mount.
   useEffect(() => {
     if (!initialLine) return;
-    const id = setTimeout(() => say(initialLine, initialExercise), 350);
+    const id = setTimeout(() => say(initialLine, initialContext), 350);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -42,13 +45,14 @@ export function TrainerPanel({
   useEffect(() => {
     if (!text) return;
     if (!getSettings().trainerEnabled) return;
+    if (Date.now() - at > STALE_MS) return;   // left over from the last scene
     setBubbleShown(true);
     requestAnimationFrame(() => setBubbleOpacity(1));
     const fadeOut = setTimeout(() => setBubbleOpacity(0),
                                 BUBBLE_TOTAL_MS - BUBBLE_FADE_MS);
     const hide    = setTimeout(() => setBubbleShown(false), BUBBLE_TOTAL_MS);
     return () => { clearTimeout(fadeOut); clearTimeout(hide); };
-  }, [tick, text]);
+  }, [tick, text, at]);
 
   if (!getSettings().trainerEnabled) return null;
   const trainer = currentTrainer();

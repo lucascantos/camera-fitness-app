@@ -59,7 +59,7 @@ export function useRepTracking(args: RepTrackingArgs) {
     // Unilateral exercises always start on the right arm.
     setSide("right");
     tk?.setSide?.("right");
-    say("intro", exercise);
+    say("intro", { exercise });
   }, [exercise]);
 
   /** Finish the current arm and move to the other one. */
@@ -71,6 +71,7 @@ export function useRepTracking(args: RepTrackingArgs) {
     lastRepRef.current = 0;
     setReps(0);
     switchSideChime();
+    say("switch_side", { side: "left" });
   }, []);
 
   // MediaPipe — fires once per frame with landmarks.

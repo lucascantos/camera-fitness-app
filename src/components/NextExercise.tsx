@@ -14,8 +14,13 @@ import { titleCase } from "@/lib/format";
 export function NextExercise() {
   const { session, workoutIdx, goTo } = useSessionStore();
 
+  // The set-complete line is still on screen; give it a beat, then talk
+  // about the exercise that just ended and the one coming up. The cursor has
+  // already moved on, so point the context one exercise back.
   useEffect(() => {
-    say("rest");
+    const id = setTimeout(() => say("next_exercise", { workoutIdx: workoutIdx - 1 }), 4500);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (!session) return null;

@@ -1,63 +1,36 @@
 // Default trainer — replaces Ellie from the legacy repo.
-// "Coach" — calm, focused, no-nonsense. Different voice from Ellie's
-// upbeat-friend energy. Add more trainers by exporting another Trainer
-// object from a sibling file.
+// "Coach" — dry, plain-spoken, a little wry. Same voice as the consultation
+// script (data/consult/script.ts): specific over enthusiastic, never a
+// cheerleader, quietly on your side. The pools live in ./coach/*.ts; add
+// more trainers by exporting another Trainer object from a sibling file.
 
 import type { Trainer } from "./trainer";
+import { GREETINGS } from "./coach/greetings";
+import { INTRO_GENERIC, INTROS } from "./coach/intros";
+import { MILESTONE_HALF, MILESTONE_LAST1, MILESTONE_LAST3, REPS } from "./coach/reps";
+import { NEXT_EXERCISE, REST, SET_COMPLETE, SET_SHORT, SWITCH_SIDE } from "./coach/sets";
+import { COMPLETE } from "./coach/complete";
 
 export const coach: Trainer = {
   name: "Coach",
+  tagline: "Dry, specific, quietly on your side.",
   // Rendered by components/trainer/CoachAvatar — no raster sprite needed.
   spritePath: "svg:coach",
   voiceDir: "/voice/coach",
 
-  greetings: [
-    "Ready when you are.",
-    "Let's get to work.",
-    "Good. You showed up.",
-    "Same as always — one set at a time.",
-  ],
-
-  intros: {
-    "bicep curl": [
-      "Bicep curls. Slow on the way down.",
-      "Squeeze at the top. No swinging.",
-    ],
-    "squat": [
-      "Squats. Knees track over toes.",
-      "Sit back into it. Drive through the heels.",
-    ],
-    "push ups": [
-      "Push-ups. Chest to floor, full lockout.",
-      "Tight core the whole way.",
-    ],
-    "deadlift": [
-      "Deadlift. Bar over mid-foot, neutral spine.",
-      "Push the floor away.",
-    ],
-    "bench press": [
-      "Bench press. Bar to chest, controlled.",
-      "Drive your feet into the floor.",
-    ],
-    "overhead press": [
-      "Overhead press. Brace your core, then go.",
-      "Lock it out. Glutes tight.",
-    ],
-    "barbell row": [
-      "Rows. Pull to your hip, squeeze.",
-      "Stay tight in the hips.",
-    ],
-    "lateral raise": [
-      "Lateral raise. Lead with the elbow.",
-      "Slow. Control the weight.",
-    ],
+  intros: INTROS,
+  pools: {
+    greeting:        GREETINGS,
+    intro:           INTRO_GENERIC,
+    rep:             REPS,
+    milestone_half:  MILESTONE_HALF,
+    milestone_last3: MILESTONE_LAST3,
+    milestone_last1: MILESTONE_LAST1,
+    set_complete:    SET_COMPLETE,
+    set_short:       SET_SHORT,
+    switch_side:     SWITCH_SIDE,
+    rest:            REST,
+    next_exercise:   NEXT_EXERCISE,
+    complete:        COMPLETE,
   },
-
-  reps:           ["Good.", "Solid.", "Stay with it.", "Clean rep."],
-  milestoneHalf:  ["Halfway.", "Stay on pace.", "Keep the form."],
-  milestoneLast3: ["Three to go.", "Push.", "Finish strong."],
-  milestoneLast1: ["Last one.", "Make it count.", "Finish."],
-  setComplete:    ["Set done. Recover.", "Good set.", "Rest up."],
-  rests:          ["Breathe.", "Hydrate.", "Reset.", "Stay loose."],
-  completes:      ["Session done.", "Solid work today.", "That's the work. Recover."],
 };
