@@ -32,14 +32,14 @@ export const EXERCISE_CATALOG: ExerciseMeta[] = [
   { name: "split squat",    primary: "Quads",     equipment: "dumbbell" },
 
   // Implement variants of the lifts above
-  { name: "hammer curl",       primary: "Biceps",    equipment: "dumbbell" },
-  { name: "barbell curl",      primary: "Biceps",    equipment: "barbell" },
-  { name: "front squat",       primary: "Quads",     equipment: "barbell" },
-  { name: "db squat",          primary: "Quads",     equipment: "dumbbell" },
-  { name: "db press",          primary: "Chest",     equipment: "dumbbell" },
-  { name: "db row",            primary: "Back",      equipment: "dumbbell" },
-  { name: "db deadlift",       primary: "Back",      equipment: "dumbbell" },
-  { name: "db overhead press", primary: "Shoulders", equipment: "dumbbell" },
+  { name: "hammer curl",            primary: "Biceps",    equipment: "dumbbell" },
+  { name: "barbell curl",           primary: "Biceps",    equipment: "barbell" },
+  { name: "front squat",            primary: "Quads",     equipment: "barbell" },
+  { name: "dumbbell squat",         primary: "Quads",     equipment: "dumbbell" },
+  { name: "dumbbell press",         primary: "Chest",     equipment: "dumbbell" },
+  { name: "dumbbell row",           primary: "Back",      equipment: "dumbbell" },
+  { name: "dumbbell deadlift",      primary: "Back",      equipment: "dumbbell" },
+  { name: "dumbbell overhead press", primary: "Shoulders", equipment: "dumbbell" },
 ];
 
 const META_BY_NAME = new Map(EXERCISE_CATALOG.map((m) => [m.name, m]));

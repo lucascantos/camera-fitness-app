@@ -130,7 +130,7 @@ export const GEOMETRY: Record<string, Geometry> = {
 
   // One-arm dumbbell row — trained a side at a time, like the triceps
   // extension. The hinge is logged but not gated (as with the barbell row).
-  "db row": {
+  "dumbbell row": {
     landmarks: [LM.RIGHT_SHOULDER, LM.RIGHT_ELBOW, LM.RIGHT_WRIST],
     sideLandmarks: {
       right: [LM.RIGHT_SHOULDER, LM.RIGHT_ELBOW, LM.RIGHT_WRIST],
@@ -148,7 +148,7 @@ export const GEOMETRY: Record<string, Geometry> = {
 GEOMETRY["hammer curl"] = GEOMETRY["bicep curl"];
 GEOMETRY["barbell curl"] = GEOMETRY["bicep curl"];
 GEOMETRY["front squat"] = GEOMETRY["squat"];
-GEOMETRY["db squat"] = GEOMETRY["squat"];
-GEOMETRY["db press"] = GEOMETRY["bench press"];
-GEOMETRY["db deadlift"] = GEOMETRY["deadlift"];
-GEOMETRY["db overhead press"] = GEOMETRY["overhead press"];
+GEOMETRY["dumbbell squat"] = GEOMETRY["squat"];
+GEOMETRY["dumbbell press"] = GEOMETRY["bench press"];
+GEOMETRY["dumbbell deadlift"] = GEOMETRY["deadlift"];
+GEOMETRY["dumbbell overhead press"] = GEOMETRY["overhead press"];

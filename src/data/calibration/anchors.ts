@@ -61,11 +61,11 @@ export const DEFAULT_ANCHORS: Record<string, AnchorPair> = {
   "hammer curl": { rest: 165, work: 45, joint: "elbow", fromLegacyMeasurement: false },
   "barbell curl": { rest: 165, work: 45, joint: "elbow", fromLegacyMeasurement: false },
   "front squat": { rest: 170, work: 95, joint: "knee", fromLegacyMeasurement: false },
-  "db squat": { rest: 170, work: 95, joint: "knee", fromLegacyMeasurement: false },
-  "db press": { rest: 165, work: 75, joint: "elbow", fromLegacyMeasurement: false },
-  "db row": { rest: 165, work: 75, joint: "elbow", fromLegacyMeasurement: false },
-  "db deadlift": { rest: 175, work: 95, joint: "hip", fromLegacyMeasurement: false },
-  "db overhead press": { rest: 75, work: 170, joint: "elbow", fromLegacyMeasurement: false },
+  "dumbbell squat": { rest: 170, work: 95, joint: "knee", fromLegacyMeasurement: false },
+  "dumbbell press": { rest: 165, work: 75, joint: "elbow", fromLegacyMeasurement: false },
+  "dumbbell row": { rest: 165, work: 75, joint: "elbow", fromLegacyMeasurement: false },
+  "dumbbell deadlift": { rest: 175, work: 95, joint: "hip", fromLegacyMeasurement: false },
+  "dumbbell overhead press": { rest: 75, work: 170, joint: "elbow", fromLegacyMeasurement: false },
 };
 
 export function defaultAnchors(exercise: string): AnchorPair | null {

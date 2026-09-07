@@ -113,31 +113,31 @@ export const INTROS: Record<string, LineSpec[]> = {
     "Depth first. I'm watching the knee angle, not the plates.",
     "Big breath at the top, brace, drive through the whole foot.",
   ],
-  "db squat": [
+  "dumbbell squat": [
     "Dumbbell squat. Weights at your sides or racked on the shoulders — your call.",
     "Same squat rules: knees out, chest up, sit between your heels.",
     "Full depth every rep. Half squats get half a count.",
     "Drive through the heels and stand tall at the top.",
   ],
-  "db press": [
+  "dumbbell press": [
     "Dumbbell press. Wrists stacked over elbows, lower under control.",
     "The dumbbells let each arm work alone — no leaning to the strong side.",
     "Stretch at the bottom, press to a lockout, don't clash them at the top.",
     "Feet planted, shoulder blades pinned. Leg drive is legal.",
   ],
-  "db row": [
+  "dumbbell row": [
     "One-arm row. Hinge, brace the free hand, and pull to the hip.",
     "Elbow drives back, not out. Squeeze the shoulder blade at the top.",
     "Keep the torso still — if it twists to lift the weight, drop it.",
     "Finish this arm, then I'll call the swap.",
   ],
-  "db deadlift": [
+  "dumbbell deadlift": [
     "Dumbbell deadlift. Weights close to the legs, neutral spine, push the floor away.",
     "Hinge at the hips first. This is a hinge, not a squat.",
     "Stand up tall and lock the hips. Don't lean back at the top.",
     "Control the way down — lower the weights, don't drop into the next rep.",
   ],
-  "db overhead press": [
+  "dumbbell overhead press": [
     "Dumbbell overhead press. Brace the core, press straight up overhead.",
     "No back-bend. Squeeze the glutes — this is a shoulder lift, not a hip lift.",
     "Each arm on its own. Lock out over the middle of your foot.",

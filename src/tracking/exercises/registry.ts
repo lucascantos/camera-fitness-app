@@ -34,12 +34,12 @@ export const TRACKED_EXERCISES = [
   "dumbbell fly",
   "split squat",
   "front squat",
-  "db row",
-  "db press",
+  "dumbbell row",
+  "dumbbell press",
   "barbell curl",
-  "db deadlift",
-  "db overhead press",
-  "db squat",
+  "dumbbell deadlift",
+  "dumbbell overhead press",
+  "dumbbell squat",
 ] as const;
 
 // MediaPipe pairs each joint as (left, right) with consecutive indices, so the
