@@ -13,10 +13,9 @@
 // profile contributed to the opening thresholds. See
 // docs/calibration-devlog.md, finding 18.
 
-import { LM } from "../helpers";
 import type { ExerciseTracker } from "./types";
-import { createAngleTracker, type AngleTrackerOptions } from "./generic";
-import { CURL_POSTURE, PUSHUP_POSTURE, TRICEPS_POSTURE } from "./postures";
+import { createAngleTracker } from "./generic";
+import { GEOMETRY } from "./geometry";
 import { defaultAnchors } from "@/data/calibration/anchors";
 import { deriveThresholds, type Thresholds } from "@/data/calibration/derive";
 
@@ -30,10 +29,18 @@ export const TRACKED_EXERCISES = [
   "barbell row",
   "lateral raise",
   "one arm triceps extension",
+  "hammer curl",
+  "skull crusher",
+  "dumbbell fly",
+  "split squat",
+  "front squat",
+  "db row",
+  "db press",
+  "barbell curl",
+  "db deadlift",
+  "db overhead press",
+  "db squat",
 ] as const;
-
-/** Everything about an exercise except its thresholds. */
-type Geometry = Omit<AngleTrackerOptions, "name" | "workThreshold" | "restThreshold">;
 
 // MediaPipe pairs each joint as (left, right) with consecutive indices, so the
 // opposite side of any triple is a straight index swap.
@@ -43,87 +50,6 @@ const MIRROR: Record<number, number> = {
 };
 const mirrorTriple = (t: [number, number, number]): [number, number, number] =>
   [MIRROR[t[0]] ?? t[0], MIRROR[t[1]] ?? t[1], MIRROR[t[2]] ?? t[2]];
-
-const GEOMETRY: Record<string, Geometry> = {
-  "bicep curl": {
-    landmarks: [LM.RIGHT_SHOULDER, LM.RIGHT_ELBOW, LM.RIGHT_WRIST],
-    posture: CURL_POSTURE,
-    auxAngles: { leftElbow: [LM.LEFT_SHOULDER, LM.LEFT_ELBOW, LM.LEFT_WRIST] },
-  },
-
-  squat: {
-    landmarks: [LM.RIGHT_HIP, LM.RIGHT_KNEE, LM.RIGHT_ANKLE],
-    auxAngles: {
-      // Hip angle separates a squat from a hinge; the left knee shows whether
-      // the two legs agree, or whether the right is simply the occluded one.
-      hip: [LM.RIGHT_SHOULDER, LM.RIGHT_HIP, LM.RIGHT_KNEE],
-      leftKnee: [LM.LEFT_HIP, LM.LEFT_KNEE, LM.LEFT_ANKLE],
-    },
-  },
-
-  "one arm triceps extension": {
-    landmarks: [LM.RIGHT_SHOULDER, LM.RIGHT_ELBOW, LM.RIGHT_WRIST],
-    sideLandmarks: {
-      right: [LM.RIGHT_SHOULDER, LM.RIGHT_ELBOW, LM.RIGHT_WRIST],
-      left: [LM.LEFT_SHOULDER, LM.LEFT_ELBOW, LM.LEFT_WRIST],
-    },
-    sidePosture: TRICEPS_POSTURE,
-    unilateral: true,
-  },
-
-  "push ups": {
-    landmarks: [LM.RIGHT_SHOULDER, LM.RIGHT_ELBOW, LM.RIGHT_WRIST],
-    posture: PUSHUP_POSTURE,
-    auxAngles: {
-      // Sagging or piking is the classic push-up form break, and a horizontal
-      // body is also where MediaPipe struggles most.
-      hipLine: [LM.RIGHT_SHOULDER, LM.RIGHT_HIP, LM.RIGHT_KNEE],
-      leftElbow: [LM.LEFT_SHOULDER, LM.LEFT_ELBOW, LM.LEFT_WRIST],
-    },
-  },
-
-  "bench press": {
-    landmarks: [LM.RIGHT_SHOULDER, LM.RIGHT_ELBOW, LM.RIGHT_WRIST],
-    auxAngles: { leftElbow: [LM.LEFT_SHOULDER, LM.LEFT_ELBOW, LM.LEFT_WRIST] },
-  },
-
-  deadlift: {
-    landmarks: [LM.RIGHT_SHOULDER, LM.RIGHT_HIP, LM.RIGHT_KNEE],
-    auxAngles: {
-      // Knee angle separates a deadlift from a squat — both close the hip.
-      knee: [LM.RIGHT_HIP, LM.RIGHT_KNEE, LM.RIGHT_ANKLE],
-      elbow: [LM.RIGHT_SHOULDER, LM.RIGHT_ELBOW, LM.RIGHT_WRIST],
-    },
-  },
-
-  "overhead press": {
-    landmarks: [LM.RIGHT_SHOULDER, LM.RIGHT_ELBOW, LM.RIGHT_WRIST],
-    auxAngles: {
-      // Elbow angle alone can't tell an overhead lockout from an arm hanging
-      // straight down — the shoulder angle is what disambiguates.
-      shoulder: [LM.RIGHT_HIP, LM.RIGHT_SHOULDER, LM.RIGHT_ELBOW],
-      leftElbow: [LM.LEFT_SHOULDER, LM.LEFT_ELBOW, LM.LEFT_WRIST],
-    },
-  },
-
-  "barbell row": {
-    landmarks: [LM.RIGHT_SHOULDER, LM.RIGHT_ELBOW, LM.RIGHT_WRIST],
-    auxAngles: {
-      // The hinge should hold steady through a row; if it swings, the athlete
-      // is heaving rather than rowing.
-      hip: [LM.RIGHT_SHOULDER, LM.RIGHT_HIP, LM.RIGHT_KNEE],
-      leftElbow: [LM.LEFT_SHOULDER, LM.LEFT_ELBOW, LM.LEFT_WRIST],
-    },
-  },
-
-  "lateral raise": {
-    landmarks: [LM.RIGHT_HIP, LM.RIGHT_SHOULDER, LM.RIGHT_ELBOW],
-    auxAngles: {
-      leftShoulder: [LM.LEFT_HIP, LM.LEFT_SHOULDER, LM.LEFT_ELBOW],
-      elbow: [LM.RIGHT_SHOULDER, LM.RIGHT_ELBOW, LM.RIGHT_WRIST],
-    },
-  },
-};
 
 /** The angle triple an exercise watches, for the session calibrator. */
 export function trackedLandmarks(exercise: string): [number, number, number] | null {

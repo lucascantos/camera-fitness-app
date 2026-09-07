@@ -46,6 +46,26 @@ export const DEFAULT_ANCHORS: Record<string, AnchorPair> = {
   deadlift: { rest: 175, work: 95, joint: "hip", fromLegacyMeasurement: false },
   // Working position is the *extended* overhead lockout, so work > rest here.
   "overhead press": { rest: 75, work: 170, joint: "elbow", fromLegacyMeasurement: false },
+
+  // ── New movements ──
+  // Elbow extension against the triceps: bar to the forehead (flexed) is the
+  // far end, lockout is rest — same direction as a curl.
+  "skull crusher": { rest: 165, work: 55, joint: "elbow", fromLegacyMeasurement: false },
+  // Shoulder horizontal adduction: arms wide is rest, arms closed together is
+  // the working end, so work < rest like a curl or squat.
+  "dumbbell fly": { rest: 90, work: 30, joint: "shoulder-adduction", fromLegacyMeasurement: false },
+  // Front-leg knee flexion, a touch deeper than a two-legged squat.
+  "split squat": { rest: 170, work: 90, joint: "knee", fromLegacyMeasurement: false },
+
+  // ── Implement variants: same joint and direction as the parent lift ──
+  "hammer curl": { rest: 165, work: 45, joint: "elbow", fromLegacyMeasurement: false },
+  "barbell curl": { rest: 165, work: 45, joint: "elbow", fromLegacyMeasurement: false },
+  "front squat": { rest: 170, work: 95, joint: "knee", fromLegacyMeasurement: false },
+  "db squat": { rest: 170, work: 95, joint: "knee", fromLegacyMeasurement: false },
+  "db press": { rest: 165, work: 75, joint: "elbow", fromLegacyMeasurement: false },
+  "db row": { rest: 165, work: 75, joint: "elbow", fromLegacyMeasurement: false },
+  "db deadlift": { rest: 175, work: 95, joint: "hip", fromLegacyMeasurement: false },
+  "db overhead press": { rest: 75, work: 170, joint: "elbow", fromLegacyMeasurement: false },
 };
 
 export function defaultAnchors(exercise: string): AnchorPair | null {

@@ -25,6 +25,21 @@ export const EXERCISE_CATALOG: ExerciseMeta[] = [
   { name: "overhead press", primary: "Shoulders", equipment: "barbell" },
   { name: "barbell row",    primary: "Back",      equipment: "barbell" },
   { name: "one arm triceps extension", primary: "Triceps", equipment: "dumbbell" },
+
+  // New movements
+  { name: "skull crusher",  primary: "Triceps",   equipment: "barbell" },
+  { name: "dumbbell fly",   primary: "Chest",     equipment: "dumbbell" },
+  { name: "split squat",    primary: "Quads",     equipment: "dumbbell" },
+
+  // Implement variants of the lifts above
+  { name: "hammer curl",       primary: "Biceps",    equipment: "dumbbell" },
+  { name: "barbell curl",      primary: "Biceps",    equipment: "barbell" },
+  { name: "front squat",       primary: "Quads",     equipment: "barbell" },
+  { name: "db squat",          primary: "Quads",     equipment: "dumbbell" },
+  { name: "db press",          primary: "Chest",     equipment: "dumbbell" },
+  { name: "db row",            primary: "Back",      equipment: "dumbbell" },
+  { name: "db deadlift",       primary: "Back",      equipment: "dumbbell" },
+  { name: "db overhead press", primary: "Shoulders", equipment: "dumbbell" },
 ];
 
 const META_BY_NAME = new Map(EXERCISE_CATALOG.map((m) => [m.name, m]));
