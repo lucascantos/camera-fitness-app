@@ -27,7 +27,7 @@ function buildId(): string {
   }
 }
 
-export default defineConfig(async ({ command, mode }) => {
+export default defineConfig(async ({ command, mode, isPreview }) => {
   const plugins: PluginOption[] = [
     react(),
     // Dev-only: lets a phone POST its recorded pose traces to ./logs/ on this
@@ -114,7 +114,9 @@ export default defineConfig(async ({ command, mode }) => {
       __BUILD_ID__: JSON.stringify(buildId()),
       __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
     },
-    base: command === "build" ? "/camera-fitness-app/" : "/",
+    // `vite preview` runs with command "serve" but serves the built dist/,
+    // so it needs the production base too.
+    base: command === "build" || isPreview ? "/camera-fitness-app/" : "/",
     plugins,
     resolve: {
       alias: {
