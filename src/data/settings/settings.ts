@@ -15,6 +15,8 @@ export interface Settings {
   activePlanId: string | null;
   restSeconds: number;
   autoRest: boolean;
+  // Notify when rest ends while the app is in the background (opt-in).
+  restAlerts: boolean;
   weightStep: number;
   favoriteExercises: string[];
   trainerEnabled: boolean;
@@ -35,6 +37,7 @@ const DEFAULTS: Settings = {
   activePlanId: null,
   restSeconds: 60,
   autoRest: true,
+  restAlerts: false,
   weightStep: 1.0,
   favoriteExercises: [],
   trainerEnabled: true,
