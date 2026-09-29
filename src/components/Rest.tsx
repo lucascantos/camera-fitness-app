@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSessionStore } from "@/stores/sessionStore";
 import { getSettings } from "@/data/settings/settings";
 import { restTick } from "@/audio/sfx";
+import { notifyRestOver } from "@/notifications/restAlert";
 import { say } from "@/data/trainers/say";
 import { useTrainerStore } from "@/stores/trainerStore";
 import { CoachLine } from "@/components/trainer/CoachLine";
@@ -28,6 +29,15 @@ export function Rest() {
     setRemaining(duration);
     tickedRef.current = new Set();
     const start = Date.now();
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      clearInterval(id);
+      clearTimeout(endId);
+      notifyRestOver();
+      goTo("training");
+    };
     const id = setInterval(() => {
       const left = duration - Math.floor((Date.now() - start) / 1000);
       setRemaining(left);
@@ -36,9 +46,13 @@ export function Rest() {
         tickedRef.current.add(left);
         restTick();
       }
-      if (left <= 0) { clearInterval(id); goTo("training"); }
+      if (left <= 0) finish();
     }, 100);
-    return () => clearInterval(id);
+    // Backstop for when the app is in the background: browsers throttle a
+    // repeating 100ms interval in hidden tabs far harder than a single
+    // timeout, so this keeps the "rest over" alert close to on time.
+    const endId = setTimeout(finish, duration * 1000);
+    return () => { clearInterval(id); clearTimeout(endId); };
   }, [duration, goTo]);
 
   const pct = Math.max(0, (remaining / duration) * 100);
