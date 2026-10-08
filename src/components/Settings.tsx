@@ -6,9 +6,6 @@ import { useState } from "react";
 import { getSettings, updateSettings, type Theme } from "@/data/settings/settings";
 import { applyMusicVolume } from "@/audio/music";
 import { repBeep, setCompleteChime } from "@/audio/sfx";
-import { say, setTrainer } from "@/data/trainers/say";
-import { TRAINERS } from "@/data/trainers";
-import { TrainerAvatar } from "@/components/trainer/TrainerAvatar";
 import { POSE_STYLES } from "@/tracking/poseRenderer";
 import { getGpuStatus } from "@/tracking/gpuStatus";
 import { TrackingDebugSection } from "@/components/TrackingDebugSection";
@@ -41,12 +38,6 @@ export function Settings() {
         label="Music"
         value={s.musicVol}
         onChange={async (v) => { await set({ musicVol: v }); applyMusicVolume(); }}
-      />
-      <Slider
-        label="Voice"
-        value={s.voiceVol}
-        // Preview: speak a short line at the new volume.
-        onChange={async (v) => { await set({ voiceVol: v }); say("rep"); }}
       />
       <Slider
         label="SFX"
@@ -119,38 +110,6 @@ export function Settings() {
                 </div>
               </button>
             ))}
-          </div>
-        )}
-      </div>
-
-      <div className="mt-6">
-        <ToggleRow
-          label="Trainer"
-          on={s.trainerEnabled}
-          onToggle={(on) => set({ trainerEnabled: on })}
-        />
-        {s.trainerEnabled && (
-          <div className="grid grid-cols-2 gap-3 mt-3">
-            {TRAINERS.map((t) => (
-              <button
-                key={t.name}
-                onClick={() => { setTrainer(t); say("greeting"); force({}); }}
-                className="flex items-center gap-3 bg-panel border border-border rounded-2xl p-3 hover:bg-panel-dark transition text-left"
-              >
-                <TrainerAvatar trainer={t} size={56} />
-                <div>
-                  <div className="font-bold text-ink">{t.name}</div>
-                  <div className="text-xs text-gray-dark">
-                    {t.tagline}
-                  </div>
-                </div>
-              </button>
-            ))}
-            {TRAINERS.length === 1 && (
-              <div className="bg-panel-dark border border-dashed border-border rounded-2xl p-3 text-gray-dark text-sm grid place-items-center">
-                More trainers coming soon
-              </div>
-            )}
           </div>
         )}
       </div>

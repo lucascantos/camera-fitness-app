@@ -1,6 +1,6 @@
 // Synthesised SFX via Web Audio API. No asset files — every sound is
 // generated from oscillators so the app always has audible feedback
-// even before any voice clips are recorded.
+// without shipping any audio files.
 
 import { getSettings } from "@/data/settings/settings";
 

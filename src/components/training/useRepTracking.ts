@@ -10,7 +10,6 @@ import type { ExerciseTracker, Side } from "@/tracking/exercises/types";
 import { createPoseRenderer } from "@/tracking/poseRenderer";
 import { drawPoseOverlay } from "@/tracking/poseOverlay";
 import { getSettings } from "@/data/settings/settings";
-import { say } from "@/data/trainers/say";
 import { switchSideChime, repBeep } from "@/audio/sfx";
 import { isDebugLogging } from "@/tracking/log/flag";
 import * as logRecorder from "@/tracking/log/recorder";
@@ -59,7 +58,6 @@ export function useRepTracking(args: RepTrackingArgs) {
     // Unilateral exercises always start on the right arm.
     setSide("right");
     tk?.setSide?.("right");
-    say("intro", { exercise });
   }, [exercise]);
 
   /** Finish the current arm and move to the other one. */
@@ -71,7 +69,6 @@ export function useRepTracking(args: RepTrackingArgs) {
     lastRepRef.current = 0;
     setReps(0);
     switchSideChime();
-    say("switch_side", { side: "left" });
   }, []);
 
   // MediaPipe — fires once per frame with landmarks.

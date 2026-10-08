@@ -7,9 +7,6 @@ import { useState } from "react";
 import { getSettings, updateSettings } from "@/data/settings/settings";
 import { applyMusicVolume } from "@/audio/music";
 import { POSE_STYLES } from "@/tracking/poseRenderer";
-import { TRAINERS } from "@/data/trainers";
-import { setTrainer, say, currentTrainer } from "@/data/trainers/say";
-import { TrainerAvatar } from "@/components/trainer/TrainerAvatar";
 import { useDismissable } from "@/hooks/useDismissable";
 
 const WEIGHT_STEPS = [0.5, 1.0, 2.5, 5.0];
@@ -17,7 +14,6 @@ const WEIGHT_STEPS = [0.5, 1.0, 2.5, 5.0];
 export function QuickSettings({ onClose }: { onClose(): void }) {
   const [, force] = useState({});
   const s = getSettings();
-  const active = currentTrainer();
   const { closing, dismiss } = useDismissable(onClose, 180);
   const set = async (patch: Parameters<typeof updateSettings>[0]) => {
     await updateSettings(patch);
@@ -96,33 +92,6 @@ export function QuickSettings({ onClose }: { onClose(): void }) {
               </button>
             ))}
           </div>
-        </Section>
-
-        {/* Trainer */}
-        <Section title="Trainer">
-          <div className="flex gap-2">
-            <Pill selected={s.trainerEnabled} onClick={() => set({ trainerEnabled: true })}>On</Pill>
-            <Pill selected={!s.trainerEnabled} onClick={() => set({ trainerEnabled: false })}>Off</Pill>
-          </div>
-          {s.trainerEnabled && TRAINERS.length > 1 && (
-            <div className="flex gap-2 mt-3 flex-wrap">
-              {TRAINERS.map((t) => (
-                <button
-                  key={t.name}
-                  onClick={() => { setTrainer(t); say("greeting"); force({}); }}
-                  className={
-                    "rounded-2xl p-1 border transition " +
-                    (active.name === t.name
-                      ? "border-accent ring-2 ring-accent"
-                      : "border-border hover:bg-panel-dark")
-                  }
-                  title={t.name}
-                >
-                  <TrainerAvatar trainer={t} size={40} />
-                </button>
-              ))}
-            </div>
-          )}
         </Section>
 
         {/* Weight step */}

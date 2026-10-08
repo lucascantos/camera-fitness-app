@@ -2,26 +2,13 @@
 // next exercise (set 0). Presents what's up next plus the remaining exercises,
 // and a button to start — replacing the bare rest timer at exercise boundaries.
 
-import { useEffect } from "react";
 import { useSessionStore } from "@/stores/sessionStore";
 import type { SessionSet } from "@/data/plans/plans";
-import { getSettings } from "@/data/settings/settings";
-import { say } from "@/data/trainers/say";
 import { PlayIcon } from "@/components/icons";
-import { TrainerPanel } from "@/components/trainer/TrainerPanel";
 import { titleCase } from "@/lib/format";
 
 export function NextExercise() {
   const { session, workoutIdx, goTo } = useSessionStore();
-
-  // The set-complete line is still on screen; give it a beat, then talk
-  // about the exercise that just ended and the one coming up. The cursor has
-  // already moved on, so point the context one exercise back.
-  useEffect(() => {
-    const id = setTimeout(() => say("next_exercise", { workoutIdx: workoutIdx - 1 }), 4500);
-    return () => clearTimeout(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   if (!session) return null;
 
@@ -32,14 +19,8 @@ export function NextExercise() {
   const doneCount = workoutIdx;
   const total = session.workouts.length;
 
-  const trainerOn = getSettings().trainerEnabled;
-  const gridCls = trainerOn
-    ? "flex flex-col gap-6 p-4 lg:grid lg:grid-cols-[260px_1fr] lg:p-10 lg:h-full"
-    : "p-4 lg:p-10 lg:h-full";
-
   return (
-    <div className={gridCls}>
-      {trainerOn && <TrainerPanel characterHeight={300} />}
+    <div className="p-4 lg:p-10 lg:h-full">
       <div className="bg-panel rounded-3xl p-6 lg:p-10 max-w-3xl border border-border shadow-card flex flex-col">
         <div className="text-good text-xl font-extrabold tracking-widest">
           EXERCISE COMPLETE

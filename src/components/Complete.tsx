@@ -7,9 +7,6 @@ import { loadPlans, type Plan } from "@/data/plans/plans";
 import { getStrategy } from "@/data/progressions";
 import { fanfare } from "@/audio/sfx";
 import { titleCase } from "@/lib/format";
-import { say } from "@/data/trainers/say";
-import { CoachLine } from "@/components/trainer/CoachLine";
-import { debriefSession } from "./training/debrief";
 
 export function Complete() {
   const { session, endSession } = useSessionStore();
@@ -36,10 +33,7 @@ export function Complete() {
     setTotalCoins(total);
 
     (async () => {
-      // Read the session against history BEFORE it joins history.
-      const debrief = debriefSession(session);
       await awardSession(session.sessionId, exercises, total);
-      say("complete", debrief);
 
       // If the session belongs to a plan, let the progression strategy
       // update working weights / TM / week index for next time.
@@ -74,8 +68,6 @@ export function Complete() {
       <div className="bg-panel rounded-3xl p-6 lg:p-10 max-w-3xl border border-border shadow-card">
         <div className="text-accent text-5xl font-black leading-none">SESSION</div>
         <div className="text-accent text-5xl font-black leading-none">COMPLETE!</div>
-
-        <CoachLine className="mt-5" />
 
         <div className="mt-6 bg-panel-dark rounded-2xl p-5">
           {session.workouts.map((w) => {

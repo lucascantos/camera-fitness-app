@@ -12,8 +12,6 @@ import { useCamera } from "@/hooks/useCamera";
 import { useSessionStore } from "@/stores/sessionStore";
 import { QuickSettings } from "@/components/QuickSettings";
 import { DebugTrace } from "@/components/DebugTrace";
-import { CoachCaption } from "@/components/trainer/CoachCaption";
-import { say } from "@/data/trainers/say";
 import { isDebugLogging } from "@/tracking/log/flag";
 import * as logRecorder from "@/tracking/log/recorder";
 import { RepBar, StatusPills, TopBar } from "./training/TrainingHud";
@@ -75,7 +73,6 @@ export function Training() {
     }
     recordActuals(session, workoutIdx, setIdx, { reps: repsDone, weight });
     setSheet(null);
-    announceSetEnd(repsDone);
 
     if (setIdx + 1 < workout.sets.length) {
       setCursor(workoutIdx, setIdx + 1);
@@ -89,18 +86,6 @@ export function Training() {
     } else {
       goTo("complete");
     }
-  }
-
-  /**
-   * The rep counter already spoke when a tracked set reached its target. The
-   * cases it can't see are settled here: an AMRAP being ended, a set that
-   * fell short, and a manual / corrected count that hit the number.
-   */
-  function announceSetEnd(repsDone: number) {
-    if (repsDone <= 0) return;   // a skipped set gets no commentary
-    if (isAmrap)                 say("set_complete", { reps: repsDone });
-    else if (repsDone < targetReps) say("set_short", { reps: repsDone });
-    else if (reps < targetReps)  say("set_complete", { reps: repsDone });
   }
 
   return (
@@ -139,8 +124,6 @@ export function Training() {
         lowPerf={tracking.lowPerf}
         tracked={!!trackerRef.current}
       />
-
-      <CoachCaption />
 
       <RepBar
         reps={reps}

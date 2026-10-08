@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { loadSettings } from "@/data/settings/settings";
 import { requestPersistentStorage } from "@/data/db";
 import { loadAthlete } from "@/data/athlete/athlete";
-import { loadConsult } from "@/data/consult/consult";
 import { useSessionStore, loadPersistedSession } from "@/stores/sessionStore";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import { unlockAudio } from "@/audio/sfx";
@@ -19,7 +18,6 @@ import { NextExercise }      from "@/components/NextExercise";
 import { Complete }          from "@/components/Complete";
 import { Stats }             from "@/components/Stats";
 import { Settings }          from "@/components/Settings";
-import { Coach }             from "@/components/Coach";
 import { SessionRecovery }   from "@/components/SessionRecovery";
 
 export default function App() {
@@ -32,19 +30,16 @@ export default function App() {
     scene === "training" || scene === "rest" ||
     scene === "transition" || scene === "complete";
 
-  // Scenes that hide TopNav and BottomNav. The consultation joins the workout
-  // flow here: it's an intro sequence, and a tab bar sitting under it would
-  // undercut the takeover (and offer an exit that "Skip" already provides).
-  const chromeless = workoutFlow || scene === "coach";
+  // Scenes that hide TopNav and BottomNav.
+  const chromeless = workoutFlow;
 
   // Keep the screen awake for the whole workout flow (training + rest +
   // transition + complete), where the user often isn't touching the phone.
-  // The consultation is deliberately excluded — the user is tapping through it.
   // Called before the `!ready` early return to satisfy the rules of hooks.
   useWakeLock(workoutFlow);
 
   useEffect(() => {
-    Promise.all([loadSettings(), loadAthlete(), loadConsult()]).then(async () => {
+    Promise.all([loadSettings(), loadAthlete()]).then(async () => {
       const persisted = await loadPersistedSession();
       if (persisted) setShowRecovery(true);
       setReady(true);
@@ -101,7 +96,6 @@ export default function App() {
         {scene === "complete"    && <Complete     />}
         {scene === "stats"     && <Stats     />}
         {scene === "settings"  && <Settings  />}
-        {scene === "coach"     && <Coach     />}
       </main>
       {!chromeless && <BottomNav />}
       {showRecovery && (

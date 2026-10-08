@@ -6,7 +6,7 @@
 // those apart from a tracker bug. Luminance, contrast and clipping cost one
 // tiny drawImage plus a getImageData over a 64x36 buffer — small enough to run
 // every frame while logging, and the same numbers can later drive a "it's too
-// dark" coach hint.
+// dark" hint.
 //
 // Motion energy (mean absolute luminance change vs the previous sample) is a
 // bonus: it says whether the user was actually moving, which separates "the

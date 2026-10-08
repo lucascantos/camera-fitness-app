@@ -27,7 +27,6 @@ import {
   formatHeaderDate, formatHistoryDate, mondayIndex, parseISODate, weekCompletedDays,
 } from "./home/dates";
 import { leastTrainedExercises } from "./home/quickStart";
-import { CoachLine } from "@/components/trainer/CoachLine";
 
 /** Resolve the active plan from settings; fall back to first available. */
 function resolveActivePlan(): Plan {
@@ -102,8 +101,6 @@ export function Home() {
           {dayLabel}
         </h1>
       </div>
-
-      <CoachLine speak="greeting" />
 
       {/* Continue active session (only while one is open) */}
       <ContinueCard />

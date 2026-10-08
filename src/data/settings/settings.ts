@@ -9,7 +9,6 @@ export type Theme = "fitpop" | "dark";
 export interface Settings {
   masterVol: number;
   musicVol: number;
-  voiceVol: number;
   sfxVol: number;
   theme: Theme;
   activePlanId: string | null;
@@ -19,7 +18,6 @@ export interface Settings {
   restAlerts: boolean;
   weightStep: number;
   favoriteExercises: string[];
-  trainerEnabled: boolean;
   // Pose overlay display style (skeleton / smooth / spring / aura / polygons).
   poseStyle: PoseStyle;
   // ── Profile (used by Body tab and the top-nav avatar) ──
@@ -31,7 +29,6 @@ export interface Settings {
 const DEFAULTS: Settings = {
   masterVol: 1.0,
   musicVol: 0.45,
-  voiceVol: 0.85,
   sfxVol: 1.0,
   theme: "fitpop",
   activePlanId: null,
@@ -40,7 +37,6 @@ const DEFAULTS: Settings = {
   restAlerts: false,
   weightStep: 1.0,
   favoriteExercises: [],
-  trainerEnabled: true,
   poseStyle: "spring",
   name: "",
   initials: "ME",
@@ -58,6 +54,10 @@ export function applyTheme(theme: Theme = _settings.theme): void {
 export async function loadSettings(): Promise<Settings> {
   const stored = await kvGet<Partial<Settings>>("settings");
   if (stored) _settings = { ...DEFAULTS, ...stored };
+  // Drop keys from the removed coach (voice volume, trainer toggle).
+  const legacy = _settings as Settings & { voiceVol?: unknown; trainerEnabled?: unknown };
+  delete legacy.voiceVol;
+  delete legacy.trainerEnabled;
   // Reset removed/unknown pose styles (e.g. an old "lerp"/"polygons" value).
   if (!POSE_STYLES.some((p) => p.id === _settings.poseStyle)) {
     _settings.poseStyle = DEFAULTS.poseStyle;
