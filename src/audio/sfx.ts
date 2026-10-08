@@ -148,3 +148,36 @@ export function countdownBeep(go = false): void {
   osc.start();
   osc.stop(c.currentTime + len + 0.01);
 }
+
+/**
+ * Referee whistle for the end of a session: a short blast, then a long one.
+ * The "pea" rattle of a real whistle is a fast wobble in pitch and volume, so
+ * one LFO drives both.
+ */
+export function whistle(): void {
+  const v = sfxVol(); if (v <= 0) return;
+  const c = getCtx();  if (!c) return;
+  const blast = (t0: number, len: number) => {
+    const osc = c.createOscillator();
+    const gain = c.createGain();
+    const lfo = c.createOscillator();
+    const pitchDepth = c.createGain();
+    const ampDepth = c.createGain();
+    osc.type = "sine";
+    osc.frequency.value = 2900;
+    lfo.frequency.value = 32;
+    pitchDepth.gain.value = 140;
+    ampDepth.gain.value = v * 0.05;
+    lfo.connect(pitchDepth).connect(osc.frequency);
+    lfo.connect(ampDepth).connect(gain.gain);
+    osc.connect(gain).connect(c.destination);
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(v * 0.12, t0 + 0.02);
+    gain.gain.setValueAtTime(v * 0.12, t0 + len - 0.05);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + len);
+    osc.start(t0); lfo.start(t0);
+    osc.stop(t0 + len + 0.01); lfo.stop(t0 + len + 0.01);
+  };
+  blast(c.currentTime, 0.16);
+  blast(c.currentTime + 0.24, 0.6);
+}

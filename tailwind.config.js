@@ -74,6 +74,18 @@ export default {
           "75%":  { opacity: "1", transform: "scale(1)" },
           "100%": { opacity: "0", transform: "scale(0.6)" },
         },
+        // "SESSION COMPLETE!" in the final Done modal: slams in from huge
+        // with a slight overshoot.
+        "zoom-in": {
+          "0%":   { opacity: "0", transform: "scale(3.5)" },
+          "60%":  { opacity: "1", transform: "scale(0.92)" },
+          "100%": { opacity: "1", transform: "scale(1)" },
+        },
+        // Session summary rows rising into place one by one.
+        "row-in": {
+          from: { opacity: "0", transform: "translateY(16px)" },
+          to:   { opacity: "1", transform: "translateY(0)" },
+        },
         // Set finished / arm switched: one pulse of the whole rep bar.
         "pulse-once": {
           "0%":   { transform: "scale(1)" },
@@ -93,6 +105,10 @@ export default {
         pop:          "pop 220ms cubic-bezier(0.34,1.56,0.64,1) both",
         "pulse-once": "pulse-once 320ms ease-out both",
         "count-in":   "count-in 1000ms cubic-bezier(0.22,1,0.36,1) both",
+        "zoom-in":    "zoom-in 500ms cubic-bezier(0.22,1,0.36,1) both",
+        // Final Done modal washing out into the summary screen's background.
+        "fade-slow":  "fade-in 1000ms ease-in-out both",
+        "row-in":     "row-in 350ms cubic-bezier(0.22,1,0.36,1) both",
       },
     },
   },

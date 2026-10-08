@@ -1,111 +1,111 @@
-// Ported from: scenes/complete.py (legacy FitnessApp repo)
+// End of a workout — the payoff screen. It has to make the athlete *feel*
+// that the session counted, so it's staged rather than dumped. The "SESSION
+// COMPLETE!" moment itself happens before this, in the final set's Done modal
+// (training/SessionDone). Then:
+//
+//   1. "Session Summary" and the session totals fade in.
+//   2. Exercises arrive one at a time; each bar fills to today's volume, past
+//      a ghost of last time when it went up.
+//   3. Records pop in (★ NEW BEST / REP BEST) with a fanfare.
+//   4. The Home button appears, and the summary becomes the first card of a
+//      swipeable carousel — one detail card per exercise after it.
+//
+// A tap anywhere skips straight to the final state.
 
 import { useEffect, useState } from "react";
 import { useSessionStore } from "@/stores/sessionStore";
-import { awardSession, getAthlete, saveAthlete } from "@/data/athlete/athlete";
-import { loadPlans, type Plan } from "@/data/plans/plans";
-import { getStrategy } from "@/data/progressions";
-import { fanfare } from "@/audio/sfx";
-import { titleCase } from "@/lib/format";
+import { fanfare, repBeep, setCompleteChime } from "@/audio/sfx";
+import { buildSummary } from "./complete/summary";
+import { useAwardSession } from "./complete/useAwardSession";
+import { useCountUp, useTimeline } from "./complete/useTimeline";
+import { SummaryRow } from "./complete/SummaryRow";
+import { Carousel, Dots } from "./complete/Carousel";
+import { DetailCard } from "./complete/DetailCard";
+
+const HEADER_MS = 700;
+const ROW_MS = 800;
+const LAST_ROW_MS = 1200;   // let the final bar finish filling
+const RECORDS_MS = 700;
 
 export function Complete() {
   const { session, endSession } = useSessionStore();
-  const [totalCoins, setTotalCoins] = useState(0);
+  // Frozen on the first render — before useAwardSession's effect writes this
+  // session into history, which would make every row compare against itself.
+  const [summary] = useState(() => (session ? buildSummary(session) : null));
+  useAwardSession(session);
 
+  const n = summary?.rows.length ?? 0;
+  // Stage 0 is the header; stage k shows k exercises; then records; then Home.
+  const delays = [
+    HEADER_MS,
+    ...Array.from({ length: n }, (_, i) => (i === n - 1 ? LAST_ROW_MS : ROW_MS)),
+    RECORDS_MS,
+  ];
+  const { stage, skipped, done, skip } = useTimeline(delays);
+  const recordsStage = n + 1;
+  const anyRecord = summary?.rows.some((r) => r.best) ?? false;
+
+  // Sound follows the sequence; a skip goes quiet.
   useEffect(() => {
-    if (!session) return;
-    // Ascending fanfare on enter.
-    fanfare();
+    if (skipped) return;
+    if (stage >= 1 && stage < recordsStage) repBeep();
+    else if (stage === recordsStage) (anyRecord ? fanfare : setCompleteChime)();
+  }, [stage, skipped, recordsStage, anyRecord]);
 
-    let repCoins = 0;
-    let setCoins = 0;
-    const exercises = session.workouts.map((w) => ({
-      exercise: w.exercise,
-      sets: w.sets.map((s) => {
-        const actuals = s[3] as { reps: number; weight: number } | undefined;
-        return actuals ?? { reps: s[0] as number, weight: s[1] as number };
-      }),
-    }));
-    for (const ex of exercises) {
-      for (const s of ex.sets) { repCoins += s.reps; setCoins += 2; }
-    }
-    const total = repCoins + setCoins;
-    setTotalCoins(total);
+  const [page, setPage] = useState(0);
+  const totalReps = useCountUp(summary?.totalReps ?? 0, true, skipped);
+  const totalKg = useCountUp(summary?.totalKg ?? 0, true, skipped);
 
-    (async () => {
-      await awardSession(session.sessionId, exercises, total);
+  if (!session || !summary) return null;
+  const rowsShown = Math.min(n, stage);
 
-      // If the session belongs to a plan, let the progression strategy
-      // update working weights / TM / week index for next time.
-      const planId = session.planId;
-      const wdIdx  = session.workoutDayIndex;
-      if (planId && wdIdx !== undefined) {
-        const plans = await loadPlans();
-        const plan: Plan | undefined = plans.find((p) => p.id === planId);
-        if (plan) {
-          const strategy = getStrategy(plan.progression);
-          try {
-            strategy.recordResult(plan, wdIdx, session, getAthlete());
-            await saveAthlete();
-          } catch {
-            // A buggy strategy must never block session completion.
-          }
-        }
-      }
-    })().catch(() => { /* swallow */ });
-  }, [session]);
-
-  if (!session) return null;
-
-  const totalReps = session.workouts.reduce(
-    (s, w) => s + w.sets.reduce((x, set) => x + ((set[3] as any)?.reps ?? (set[0] as number)), 0),
-    0,
-  );
-  const totalSets = session.workouts.reduce((s, w) => s + w.sets.length, 0);
-
-  return (
-    <div className="p-4 lg:p-10 lg:h-full">
-      <div className="bg-panel rounded-3xl p-6 lg:p-10 max-w-3xl border border-border shadow-card">
-        <div className="text-accent text-5xl font-black leading-none">SESSION</div>
-        <div className="text-accent text-5xl font-black leading-none">COMPLETE!</div>
-
-        <div className="mt-6 bg-panel-dark rounded-2xl p-5">
-          {session.workouts.map((w) => {
-            const reps = w.sets.reduce((s, set) => s + ((set[3] as any)?.reps ?? (set[0] as number)), 0);
-            return (
-              <div key={w.exercise} className="py-1 text-lg">
-                ✓ {titleCase(w.exercise)} · {w.sets.length} sets · {reps} reps
-              </div>
-            );
-          })}
+  const summaryCard = (
+    <div key="summary" className="bg-panel rounded-3xl p-5 border border-border shadow-card">
+      <div className={skipped ? "" : "animate-fade-in"}>
+        <div className="text-[11px] font-bold tracking-widest text-gray-dark">WORKOUT DONE</div>
+        <h1 className="text-3xl font-black text-ink leading-none mt-1">Session Summary</h1>
+        <div className="text-gray-dark font-semibold mt-2 tabular-nums">
+          {n} {n === 1 ? "exercise" : "exercises"} · {Math.round(totalReps)} reps
+          {summary.totalKg > 0 && <> · {Math.round(totalKg).toLocaleString()} kg lifted</>}
         </div>
-
-        <div className="mt-4 bg-panel-dark rounded-2xl p-5 text-coin">
-          <Row val={`+${totalReps}`} note={`${totalReps} reps × 1 coin`} />
-          <Row val={`+${totalSets * 2}`} note={`${totalSets} sets × 2 coins`} />
-          <div className="border-t border-border my-2" />
-          <Row val={`+${totalCoins} earned`} />
-          <div className="text-sm text-gray-dark mt-1">
-            Balance: {getAthlete().coins} coins
-          </div>
-        </div>
-
-        <button
-          onClick={endSession}
-          className="mt-8 bg-accent text-on_accent font-bold py-3 px-8 rounded-2xl"
-        >
-          ← Home
-        </button>
+      </div>
+      <div className="mt-4 flex flex-col gap-2.5">
+        {summary.rows.slice(0, rowsShown).map((row, i) => (
+          <SummaryRow
+            key={row.exercise}
+            row={row}
+            highlight={stage >= recordsStage}
+            instant={skipped}
+            onOpen={done ? () => setPage(i + 1) : undefined}
+          />
+        ))}
       </div>
     </div>
   );
-}
 
-function Row({ val, note }: { val: string; note?: string }) {
+  // The detail cards join once the reveal is over, so the first thing that
+  // appears beside the summary is the next card peeking in — the swipe cue.
+  const pages = done
+    ? [summaryCard, ...summary.rows.map((row, i) => (
+        <DetailCard key={row.exercise} row={row} active={page === i + 1} instant={false} />
+      ))]
+    : [summaryCard];
+
   return (
-    <div className="flex items-baseline gap-3 py-1">
-      <div className="text-2xl font-extrabold text-coin">{val}</div>
-      {note && <div className="text-sm text-gray-dark">{note}</div>}
+    <div onClick={done ? undefined : skip} className="min-h-full p-4 pb-8 select-none">
+      <Carousel index={page} onIndex={setPage}>{pages}</Carousel>
+
+      {done && (
+        <div className={skipped ? "" : "animate-row-in"}>
+          {n > 0 && <Dots count={n + 1} index={page} onIndex={setPage} />}
+          <button
+            onClick={endSession}
+            className="mt-5 w-full bg-accent text-on_accent font-extrabold text-xl py-4 rounded-2xl shadow-lg"
+          >
+            Home
+          </button>
+        </div>
+      )}
     </div>
   );
 }

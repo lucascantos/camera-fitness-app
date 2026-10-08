@@ -10,11 +10,13 @@ import type { ExerciseTracker, Side } from "@/tracking/exercises/types";
 import { createPoseRenderer } from "@/tracking/poseRenderer";
 import { drawPoseOverlay } from "@/tracking/poseOverlay";
 import { getSettings } from "@/data/settings/settings";
-import { switchSideChime, repBeep } from "@/audio/sfx";
+import { switchSideChime } from "@/audio/sfx";
 import { isDebugLogging } from "@/tracking/log/flag";
 import * as logRecorder from "@/tracking/log/recorder";
 import type { FrameMeta, ImageStats } from "@/tracking/log/types";
-import { announceRep } from "./repFeedback";
+import { announceRep, beepRep } from "./repFeedback";
+import { useSessionStore } from "@/stores/sessionStore";
+import { recordRep, recordSample } from "@/tracking/setTrace";
 
 export interface RepTrackingArgs {
   videoRef: React.RefObject<HTMLVideoElement>;
@@ -100,6 +102,17 @@ export function useRepTracking(args: RepTrackingArgs) {
     }
     const c = t.feed(screenLms, worldLms);
 
+    // Movement trace for the Session Summary's average rep and tempo.
+    const { session, workoutIdx, setIdx } = useSessionStore.getState();
+    const now = performance.now();
+    const angle = t.debug?.angle ?? t.angle;
+    if (session && angle != null) {
+      recordSample(session.sessionId, workoutIdx, setIdx, side, now, angle);
+      // A threshold revision can re-count several reps at once; only a single
+      // step is a rep we can place in time.
+      if (c === lastRepRef.current + 1) recordRep(session.sessionId, workoutIdx, setIdx, side, now);
+    }
+
     if (isDebugLogging()) {
       frameTimingRef.current = { fps: meta.fps, dtMs: meta.dtMs, skip: meta.skip };
       logRecorder.recordFrame(screenLms, worldLms, t.debug ?? null, c, meta);
@@ -112,7 +125,7 @@ export function useRepTracking(args: RepTrackingArgs) {
     // the set open. The set only advances once both arms are done. This path
     // plays a dedicated swap cue instead of the set-complete chime.
     if (!isAmrap && c >= targetReps && t.unilateral && side === "right") {
-      repBeep();        // the rep that finished the right arm still counts
+      beepRep();        // the rep that finished the right arm still counts
       switchToLeft();   // distinct "change arms" cue
       return;
     }

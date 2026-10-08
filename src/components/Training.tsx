@@ -22,12 +22,13 @@ import { useRepTracking } from "./training/useRepTracking";
 import { useSetRecorder } from "./training/useSetRecorder";
 import { LiveGraph } from "./training/LiveGraph";
 import { SetStart, type SetPhase } from "./training/SetStart";
+import { SessionDone } from "./training/SessionDone";
 
 export function Training() {
   const { session, workoutIdx, setIdx, setCursor, goTo, endSession } = useSessionStore();
   const { videoRef, stream, error: camError } = useCamera();
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [sheet, setSheet] = useState<null | "menu" | "set" | "settings">(null);
+  const [sheet, setSheet] = useState<null | "menu" | "set" | "settings" | "done">(null);
   const [debugOn, setDebugOn] = useState(isDebugLogging);
   // Every set opens on the setup phase; Training remounts per set.
   const [phase, setPhase] = useState<SetPhase>("setup");
@@ -82,20 +83,19 @@ export function Training() {
       });
     }
     recordActuals(session, workoutIdx, setIdx, { reps: actualReps ?? repsDone, weight });
-    setSheet(null);
 
     if (setIdx + 1 < workout.sets.length) {
       setCursor(workoutIdx, setIdx + 1);
       goTo("rest");
     } else if (workoutIdx + 1 < session.workouts.length) {
-      // Finished every set of this exercise — move the cursor to the next
-      // exercise and show the transition screen (next-up + remaining list)
-      // instead of a bare rest timer.
+      // Last set of this exercise: rest on the between-exercises screen.
       setCursor(workoutIdx + 1, 0);
       goTo("transition");
     } else {
-      goTo("complete");
+      setSheet("done");   // the Done modal becomes "SESSION COMPLETE!"
+      return;
     }
+    setSheet(null);
   }
 
   return (
@@ -164,6 +164,7 @@ export function Training() {
         />
       )}
 
+      {sheet === "done" && <SessionDone onNext={() => goTo("complete")} />}
       {sheet === "set" && (
         <SetSheet
           reps={reps}
