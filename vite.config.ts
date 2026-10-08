@@ -27,9 +27,27 @@ function buildId(): string {
   }
 }
 
+// Tailwind generates CSS from tailwind.config.js, but the running dev server
+// doesn't re-read that file: new keyframes/animations silently never reach the
+// browser until a manual restart. Restart Vite whenever the config changes.
+function restartOnTailwindConfig(): PluginOption {
+  return {
+    name: "restart-on-tailwind-config",
+    apply: "serve",
+    configureServer(server) {
+      const file = path.resolve(__dirname, "tailwind.config.js");
+      server.watcher.add(file);
+      server.watcher.on("change", (changed) => {
+        if (path.resolve(changed) === file) void server.restart();
+      });
+    },
+  };
+}
+
 export default defineConfig(async ({ command, mode, isPreview }) => {
   const plugins: PluginOption[] = [
     react(),
+    restartOnTailwindConfig(),
     // Dev-only: lets a phone POST its recorded pose traces to ./logs/ on this
     // machine, since there's no cloud storage to move them through. Inert in
     // `vite build` — see scripts/viteLogSink.ts.
