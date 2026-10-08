@@ -13,7 +13,6 @@ export interface Settings {
   theme: Theme;
   activePlanId: string | null;
   restSeconds: number;
-  autoRest: boolean;
   // Notify when rest ends while the app is in the background (opt-in).
   restAlerts: boolean;
   weightStep: number;
@@ -33,7 +32,6 @@ const DEFAULTS: Settings = {
   theme: "fitpop",
   activePlanId: null,
   restSeconds: 60,
-  autoRest: true,
   restAlerts: false,
   weightStep: 1.0,
   favoriteExercises: [],
@@ -54,10 +52,14 @@ export function applyTheme(theme: Theme = _settings.theme): void {
 export async function loadSettings(): Promise<Settings> {
   const stored = await kvGet<Partial<Settings>>("settings");
   if (stored) _settings = { ...DEFAULTS, ...stored };
-  // Drop keys from the removed coach (voice volume, trainer toggle).
-  const legacy = _settings as Settings & { voiceVol?: unknown; trainerEnabled?: unknown };
+  // Drop keys from removed features: the coach (voice volume, trainer
+  // toggle) and auto-ending a set at its target (sets now always ask).
+  const legacy = _settings as Settings & {
+    voiceVol?: unknown; trainerEnabled?: unknown; autoRest?: unknown;
+  };
   delete legacy.voiceVol;
   delete legacy.trainerEnabled;
+  delete legacy.autoRest;
   // Reset removed/unknown pose styles (e.g. an old "lerp"/"polygons" value).
   if (!POSE_STYLES.some((p) => p.id === _settings.poseStyle)) {
     _settings.poseStyle = DEFAULTS.poseStyle;

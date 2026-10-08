@@ -42,8 +42,7 @@ export function Training() {
 
   const tracking = useRepTracking({
     videoRef, canvasRef, exercise, targetReps, isAmrap, live,
-    onAutoFinish: (reps) => finishSet(reps),
-    onConfirmCount: () => setSheet("set"),
+    onTargetReached: () => setSheet("set"),
   });
   const { reps, side, isUnilateral, trackerRef } = tracking;
 
@@ -54,10 +53,10 @@ export function Training() {
   });
 
   /**
-   * Record what was actually performed, then move on. `repsDone` is written
-   * into the set's actuals slot so Complete.tsx (coins/history) and the
-   * progression strategies score the real effort instead of assuming the
-   * prescription was hit exactly.
+   * Record what was actually performed, then move on. The athlete's own count
+   * (`actualReps`) wins over the camera's (`repsDone`) and is written into the
+   * set's actuals slot, so Complete.tsx (coins/history) and the progression
+   * strategies score the real effort.
    */
   function finishSet(repsDone: number, actualReps?: number | null) {
     if (!session || !workout) return;
@@ -77,7 +76,7 @@ export function Training() {
         cycles: { extremes: cycles, restExtremes: restCycles, trusted },
       });
     }
-    recordActuals(session, workoutIdx, setIdx, { reps: repsDone, weight });
+    recordActuals(session, workoutIdx, setIdx, { reps: actualReps ?? repsDone, weight });
     setSheet(null);
 
     if (setIdx + 1 < workout.sets.length) {
@@ -168,7 +167,6 @@ export function Training() {
           onComplete={(actual) => finishSet(reps, actual)}
           onSkip={() => finishSet(0, 0)}
           onClose={() => setSheet(null)}
-          askActual={debugOn}
         />
       )}
 

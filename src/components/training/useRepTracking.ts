@@ -27,10 +27,8 @@ export interface RepTrackingArgs {
    * way, but the tracker sees no frames until this turns true.
    */
   live: boolean;
-  /** The set hit its target and auto-rest is on. */
-  onAutoFinish(reps: number): void;
-  /** Same, but diagnostics are recording — ask for the real count instead. */
-  onConfirmCount(): void;
+  /** The set hit its target — ask the athlete how many they really did. */
+  onTargetReached(): void;
 }
 
 export function useRepTracking(args: RepTrackingArgs) {
@@ -120,17 +118,16 @@ export function useRepTracking(args: RepTrackingArgs) {
     }
 
     announceRep(c, targetReps, isAmrap);
+    const prev = lastRepRef.current;
     lastRepRef.current = c;
     setReps(c);
-    if (isAmrap || c < targetReps || !getSettings().autoRest) return;
 
-    // While recording diagnostics, auto-advance would skip straight past the
-    // "how many did you actually do?" prompt — which is the label that makes
-    // the whole trace worth keeping. Open the sheet instead and let the user
-    // confirm or correct the count. Otherwise a tiny delay gives the
-    // set-complete line a beat to play.
-    if (isDebugLogging()) setTimeout(() => cbRef.current.onConfirmCount(), 600);
-    else setTimeout(() => cbRef.current.onAutoFinish(c), 600);
+    // Never end the set on the camera's word. Crossing the target opens the
+    // "how many did you do?" sheet instead — once, so dismissing it and
+    // carrying on past the target doesn't keep re-opening it. The short delay
+    // lets the set-complete chime land first.
+    if (isAmrap || prev >= targetReps || c < targetReps) return;
+    setTimeout(() => cbRef.current.onTargetReached(), 600);
   }, [targetReps, isAmrap, side, switchToLeft, canvasRef, videoRef]);
 
   const mp = useMediapipe(videoRef, onResult, !!tracker);
