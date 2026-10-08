@@ -3,9 +3,8 @@
 // all controls live in overlays (top bar, bottom rep bar) or on-demand sheets,
 // so nothing competes with the feed the user is actually posing against.
 //
-// This file is the orchestration only. The per-frame work lives in
-// ./training/useRepTracking, the chrome in ./training/TrainingHud, and the
-// sheets in ./training/{SetSheet,MenuSheet}.
+// Orchestration only: per-frame work is in ./training/useRepTracking, chrome in
+// ./training/TrainingHud, the setup + countdown in ./training/SetStart.
 
 import { useRef, useState } from "react";
 import { useCamera } from "@/hooks/useCamera";
@@ -17,6 +16,7 @@ import * as logRecorder from "@/tracking/log/recorder";
 import { RepBar, StatusPills, TopBar } from "./training/TrainingHud";
 import { SetSheet } from "./training/SetSheet";
 import { MenuSheet } from "./training/MenuSheet";
+import { exerciseMeta } from "@/data/exercises/catalog";
 import { mutateWeight, recordActuals } from "./training/session";
 import { useRepTracking } from "./training/useRepTracking";
 import { useSetRecorder } from "./training/useSetRecorder";
@@ -39,6 +39,11 @@ export function Training() {
   const targetReps = (setRow?.[0] as number) ?? 10;
   const weight = (setRow?.[1] as number) ?? 0;
   const isAmrap = Boolean(setRow?.[2]);
+
+  const changeWeight = (fn: (v: number) => number) =>
+    session && mutateWeight(session, workoutIdx, setIdx, fn);
+  // Bodyweight moves only get a weight row once they've been loaded.
+  const showWeight = weight > 0 || exerciseMeta(exercise)?.equipment !== "bodyweight";
 
   const tracking = useRepTracking({
     videoRef, canvasRef, exercise, targetReps, isAmrap, live,
@@ -143,6 +148,8 @@ export function Training() {
 
       <SetStart
         phase={phase}
+        weight={showWeight ? weight : null}
+        onWeight={changeWeight}
         onReady={() => setPhase("countdown")}
         onGo={() => setPhase("go")}
         onDone={() => setPhase("live")}
@@ -176,10 +183,7 @@ export function Training() {
           setIdx={setIdx}
           totalSets={workout?.sets.length ?? 0}
           weight={weight}
-          onWeight={(fn) => {
-            if (!session) return;
-            mutateWeight(session, workoutIdx, setIdx, fn);
-          }}
+          onWeight={changeWeight}
           onEndWorkout={() => { endSession(); }}
           onSettings={() => setSheet("settings")}
           onClose={() => setSheet(null)}
