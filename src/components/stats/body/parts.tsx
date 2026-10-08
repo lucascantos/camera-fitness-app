@@ -18,7 +18,7 @@ export function ProfileCard({ onUpdated }: { onUpdated(): void }) {
   };
 
   return (
-    <div className="bg-panel rounded-3xl border border-border shadow-card p-5">
+    <div className="bg-panel rounded-3xl border border-border shadow-card p-4 lg:p-5">
       <div className="text-[11px] font-bold tracking-widest text-gray-dark mb-3">
         PROFILE
       </div>
@@ -51,12 +51,12 @@ export function SummaryTile({ label, value, sub }: {
   label: string; value: string; sub: string;
 }) {
   return (
-    <div className="bg-panel-dark rounded-2xl border border-border p-4">
-      <div className="text-[10px] font-bold tracking-widest text-gray-dark">
+    <div className="bg-panel-dark rounded-2xl border border-border p-3 lg:p-4 min-w-0">
+      <div className="text-[10px] font-bold tracking-widest text-gray-dark truncate">
         {label}
       </div>
-      <div className="text-3xl font-extrabold text-ink mt-1">{value}</div>
-      <div className="text-xs text-gray-dark mt-0.5">{sub}</div>
+      <div className="text-xl lg:text-3xl font-extrabold text-ink mt-1 truncate">{value}</div>
+      <div className="text-[10px] lg:text-xs text-gray-dark mt-0.5 leading-tight">{sub}</div>
     </div>
   );
 }

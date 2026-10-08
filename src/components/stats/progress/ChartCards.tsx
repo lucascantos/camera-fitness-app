@@ -16,32 +16,30 @@ export function OneRmCard({ points, exercises, chosen, onChoose }: {
   onChoose(ex: string): void;
 }) {
   return (
-    <div className="bg-panel rounded-3xl border border-border shadow-card p-5">
-      <div className="flex items-baseline justify-between">
-        <div>
-          <div className="text-[11px] font-bold tracking-widest text-gray-dark">
-            ESTIMATED 1RM
-          </div>
-          <div className="text-xl font-extrabold text-ink mt-1">
-            {chosen ? `${titleCase(chosen)} · Epley estimate` : "—"}
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-2 justify-end max-w-[60%]">
-          {exercises.map((ex) => (
-            <button
-              key={ex}
-              onClick={() => onChoose(ex)}
-              className={
-                "px-3 py-1 rounded-full text-xs font-bold transition " +
+    <div className="bg-panel rounded-3xl border border-border shadow-card p-4 lg:p-5 min-w-0">
+      <div className="text-[11px] font-bold tracking-widest text-gray-dark">
+        ESTIMATED 1RM
+      </div>
+      <div className="text-xl font-extrabold text-ink mt-1 truncate">
+        {chosen ? titleCase(chosen) : "—"}
+        <span className="text-sm font-semibold text-gray-dark"> · Epley estimate</span>
+      </div>
+      {/* One scrolling row of lifts on a phone; wraps on wider screens. */}
+      <div className="flex gap-2 mt-3 -mx-4 px-4 overflow-x-auto lg:mx-0 lg:px-0 lg:flex-wrap [scrollbar-width:none]">
+        {exercises.map((ex) => (
+          <button
+            key={ex}
+            onClick={() => onChoose(ex)}
+            className={
+              "shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition " +
                 (ex === chosen
                   ? "bg-nav text-white"
                   : "bg-panel-dark text-gray-dark border border-border hover:text-ink")
               }
             >
-              {titleCase(ex)}
-            </button>
-          ))}
-        </div>
+            {titleCase(ex)}
+          </button>
+        ))}
       </div>
       <div className="mt-3">
         <LineChart
@@ -59,19 +57,15 @@ export function WeeklyVolumeCard({ weekly, thisWeek, range }: {
   range: string;
 }) {
   return (
-    <div className="bg-panel rounded-3xl border border-border shadow-card p-5">
-      <div className="flex items-baseline justify-between">
-        <div>
-          <div className="text-[11px] font-bold tracking-widest text-gray-dark">
-            WEEKLY VOLUME
-          </div>
-          <div className="text-xl font-extrabold text-ink mt-1">
-            {fmtVolume(thisWeek)} lifted this week
-          </div>
+    <div className="bg-panel rounded-3xl border border-border shadow-card p-4 lg:p-5 min-w-0">
+      <div className="flex items-baseline justify-between gap-3">
+        <div className="text-[11px] font-bold tracking-widest text-gray-dark">
+          WEEKLY VOLUME
         </div>
-        <div className="text-xs text-gray-dark">
-          {range} · TAP A BAR TO INSPECT
-        </div>
+        <div className="text-xs font-bold text-gray-dark">{range}</div>
+      </div>
+      <div className="text-xl font-extrabold text-ink mt-1">
+        {fmtVolume(thisWeek)} lifted this week
       </div>
       <div className="mt-3">
         <BarChart

@@ -76,6 +76,8 @@ export function Figure({ tint, isBack, counts, maxReps, hovered, onHover }: {
       strokeWidth: isHovered ? 2.4 : STROKE_WIDTH,
       onMouseEnter: interactive ? () => onHover(muscle!) : undefined,
       onMouseLeave: interactive ? () => onHover(null) : undefined,
+      // Phones have no hover: a tap selects the muscle instead.
+      onClick: interactive ? () => onHover(muscle!) : undefined,
       style: interactive ? { cursor: "pointer" as const } : undefined,
     };
     if (ellipse) return <ellipse {...ellipse} {...props} />;

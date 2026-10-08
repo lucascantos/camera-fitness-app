@@ -15,14 +15,14 @@ export function Tile({ label, value, sub, delta, deltaUnit, deltaFmt }: {
     ? (deltaFmt ? deltaFmt(Math.abs(delta!)) : `${Math.abs(delta!).toFixed(1)}${deltaUnit ?? ""}`)
     : null;
   return (
-    <div className="bg-panel rounded-2xl border border-border shadow-card p-4">
+    <div className="bg-panel rounded-2xl border border-border shadow-card p-4 min-w-0">
       <div className="text-[10px] font-bold tracking-widest text-gray-dark">
         {label}
       </div>
-      <div className="text-3xl font-extrabold text-ink mt-1">
+      <div className="text-2xl lg:text-3xl font-extrabold text-ink mt-1 truncate">
         {value}
       </div>
-      {sub && <div className="text-xs text-gray-dark mt-0.5">{sub}</div>}
+      {sub && <div className="text-xs text-gray-dark mt-0.5 truncate">{sub}</div>}
       {printed && (
         <div className={`text-xs font-bold mt-1 ${color}`}>
           {arrow} {printed}

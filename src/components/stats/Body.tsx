@@ -54,25 +54,27 @@ export function Body() {
   };
 
   return (
-    <div className="grid grid-cols-[1fr_320px] gap-6 px-8 pb-8">
+    // Phone first: one column, with the measurement picker as a chip row. From
+    // lg up, the picker becomes a sidebar list beside the main card.
+    <div className="flex flex-col gap-4 px-4 pb-6 lg:grid lg:grid-cols-[1fr_320px] lg:gap-6 lg:px-8 lg:pb-8">
       {/* ── Main card: header + summary tiles + chart + entry ─────── */}
-      <section className="bg-panel rounded-3xl border border-border shadow-card p-6">
-        <div className="flex items-baseline justify-between">
-          <div>
+      <section className="bg-panel rounded-3xl border border-border shadow-card p-4 lg:p-6 min-w-0">
+        <div className="flex items-baseline justify-between gap-3">
+          <div className="min-w-0">
             <div className="text-[11px] font-bold tracking-widest text-gray-dark">
               BODY
             </div>
-            <h2 className="text-2xl font-extrabold text-ink mt-1">
+            <h2 className="text-xl lg:text-2xl font-extrabold text-ink mt-1 truncate">
               {FIELD_LABEL[field]} over time
             </h2>
           </div>
-          <div className="text-xs text-gray-dark">
+          <div className="text-xs text-gray-dark shrink-0">
             {series.length} {series.length === 1 ? "entry" : "entries"}
           </div>
         </div>
 
         {/* Summary tiles */}
-        <div className="grid grid-cols-3 gap-3 mt-5">
+        <div className="grid grid-cols-3 gap-2 lg:gap-3 mt-4 lg:mt-5">
           <SummaryTile
             label="WEIGHT"
             value={fmt(latest.weight_kg?.value, "kg")}
@@ -90,8 +92,26 @@ export function Body() {
           />
         </div>
 
+        {/* Measurement picker — phone only; the sidebar list takes over on lg. */}
+        <div className="lg:hidden flex gap-2 mt-4 -mx-4 px-4 overflow-x-auto [scrollbar-width:none]">
+          {SIDEBAR_FIELDS.map((f) => (
+            <button
+              key={f}
+              onClick={() => setField(f)}
+              className={
+                "shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition " +
+                (f === field
+                  ? "bg-nav text-white"
+                  : "bg-panel-dark text-gray-dark border border-border")
+              }
+            >
+              {FIELD_LABEL[f]}
+            </button>
+          ))}
+        </div>
+
         {/* Chart */}
-        <div className="mt-6 bg-bg rounded-2xl border border-border p-4">
+        <div className="mt-4 lg:mt-6 bg-bg rounded-2xl border border-border p-3 lg:p-4">
           <div className="flex items-baseline justify-between mb-2 px-1">
             <div className="text-[11px] font-bold tracking-widest text-gray-dark">
               {FIELD_LABEL[field].toUpperCase()} TREND
@@ -100,15 +120,19 @@ export function Body() {
               {FIELD_UNIT[field]}
             </div>
           </div>
-          <LineChart data={series} height={200} />
+          <LineChart
+            data={series}
+            height={200}
+            emptyMessage="Add a measurement below to start your trend."
+          />
         </div>
 
         {/* Add measurement */}
-        <div className="mt-5 bg-panel-dark rounded-2xl border border-border p-4">
+        <div className="mt-4 lg:mt-5 bg-panel-dark rounded-2xl border border-border p-3 lg:p-4">
           <div className="text-[11px] font-bold tracking-widest text-gray-dark mb-2">
-            ADD MEASUREMENT — {FIELD_LABEL[field].toUpperCase()}
+            ADD {FIELD_LABEL[field].toUpperCase()}
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 lg:gap-3">
             <input
               type="number"
               step="0.1"
@@ -116,7 +140,8 @@ export function Body() {
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && submit()}
               placeholder={`${FIELD_LABEL[field]} (${FIELD_UNIT[field]})`}
-              className="flex-1 bg-panel border border-border rounded-xl px-4 py-3 text-ink outline-none focus:border-accent"
+              inputMode="decimal"
+              className="flex-1 min-w-0 bg-panel border border-border rounded-xl px-4 py-3 text-ink outline-none focus:border-accent"
             />
             <button
               onClick={submit}
@@ -133,10 +158,10 @@ export function Body() {
       </section>
 
       {/* ── Sidebar: profile + field list ─────────────────────────── */}
-      <aside className="flex flex-col gap-5">
+      <aside className="flex flex-col gap-4 lg:gap-5 min-w-0">
         <ProfileCard onUpdated={() => setTick((t) => t + 1)} />
 
-        <div className="bg-panel rounded-3xl border border-border shadow-card p-5">
+        <div className="hidden lg:block bg-panel rounded-3xl border border-border shadow-card p-5">
           <div className="text-[11px] font-bold tracking-widest text-gray-dark mb-3">
             MEASUREMENTS
           </div>

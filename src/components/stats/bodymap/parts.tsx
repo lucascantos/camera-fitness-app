@@ -17,14 +17,14 @@ export function FigurePanel({
   front?: boolean;
 }) {
   return (
-    <div className="bg-bg rounded-2xl p-4 border border-border">
-      <div className="flex items-center justify-between mb-3 px-1">
+    <div className="bg-bg rounded-2xl p-2 lg:p-4 border border-border min-w-0">
+      <div className="flex items-center justify-center lg:justify-between mb-2 lg:mb-3 px-1">
         <span
           className={"text-xs font-bold tracking-widest " + (front ? "text-accent" : "text-gray-dark")}
         >
           {title}
         </span>
-        <span className="text-[10px] text-gray-dark">
+        <span className="hidden lg:inline text-[10px] text-gray-dark">
           {Object.keys(regions).length} muscle groups
         </span>
       </div>
@@ -77,6 +77,7 @@ export function RankRow({ muscle, reps, max, highlighted, onHover }: {
     <div
       onMouseEnter={() => onHover(muscle)}
       onMouseLeave={() => onHover(null)}
+      onClick={() => onHover(muscle)}
       className={
         "py-2 px-2 rounded-lg cursor-default transition " +
         (highlighted ? "bg-panel-dark" : "")
@@ -92,6 +93,35 @@ export function RankRow({ muscle, reps, max, highlighted, onHover }: {
           style={{ width: `${pct}%` }}
         />
       </div>
+    </div>
+  );
+}
+
+/**
+ * What the selected muscle has done, under the figures. On a phone there is no
+ * hover, so this is where a tap on the figure gets its answer.
+ */
+export function MuscleReadout({ muscle, ranking }: {
+  muscle: string | null;
+  ranking: { muscle: string; reps: number }[];
+}) {
+  const i = muscle ? ranking.findIndex((r) => r.muscle === muscle) : -1;
+  const row = i >= 0 ? ranking[i] : null;
+  return (
+    <div className="mt-3 bg-panel-dark rounded-2xl px-4 py-3 min-h-[3.75rem] flex items-center">
+      {row ? (
+        <div key={row.muscle} className="flex items-baseline justify-between w-full animate-fade-in">
+          <div>
+            <div className="font-extrabold text-ink text-lg leading-tight">{row.muscle}</div>
+            <div className="text-xs text-gray-dark">#{i + 1} of {ranking.length} muscle groups</div>
+          </div>
+          <div className="text-2xl font-black text-ink tabular-nums">
+            {row.reps}<span className="text-sm font-bold text-gray-dark"> reps</span>
+          </div>
+        </div>
+      ) : (
+        <div className="text-sm text-gray-dark">Tap a muscle on either figure.</div>
+      )}
     </div>
   );
 }

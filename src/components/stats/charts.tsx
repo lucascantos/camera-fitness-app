@@ -25,10 +25,12 @@ function useContainerWidth(initial = 600): [React.RefObject<HTMLDivElement>, num
 // ── Line chart ──────────────────────────────────────────────────────────
 export function LineChart({
   data, height = 180, color = "#D8202C",
+  emptyMessage = "Log a workout to see this chart light up.",
 }: {
   data: { date: Date; value: number }[];
   height?: number;
   color?: string;
+  emptyMessage?: string;
 }) {
   const [ref, width] = useContainerWidth();
   const PAD_L = 36, PAD_R = 12, PAD_T = 12, PAD_B = 22;
@@ -63,7 +65,7 @@ export function LineChart({
   }, [data, innerH, innerW]);
 
   if (data.length === 0) {
-    return <EmptyChart message="Log a workout to see this chart light up." height={height} />;
+    return <EmptyChart message={emptyMessage} height={height} />;
   }
 
   return (
@@ -122,7 +124,8 @@ export function BarChart({
   const innerW = Math.max(40, width - PAD_L - PAD_R);
   const innerH = height - PAD_T - PAD_B;
 
-  if (data.length === 0) {
+  // All-zero is as empty as no data (e.g. only bodyweight work, which has no kg).
+  if (data.every((d) => d.value <= 0)) {
     return <EmptyChart message="No volume logged yet — finish a session." height={height} />;
   }
 
@@ -177,7 +180,7 @@ export function BarChart({
 function EmptyChart({ message, height }: { message: string; height: number }) {
   return (
     <div
-      className="grid place-items-center text-gray-dark text-sm border border-dashed border-border rounded-xl"
+      className="grid place-items-center text-center px-4 text-gray-dark text-sm border border-dashed border-border rounded-xl"
       style={{ height }}
     >
       {message}

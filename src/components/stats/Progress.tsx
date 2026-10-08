@@ -67,32 +67,32 @@ export function Progress() {
   );
 
   return (
-    <div className="grid grid-cols-[1fr_320px] gap-6 px-8 pb-8">
+    // Phone first: one column. From lg up, the activity + progression cards
+    // move into a sidebar beside the charts.
+    <div className="flex flex-col gap-4 px-4 pb-6 lg:grid lg:grid-cols-[1fr_320px] lg:gap-6 lg:px-8 lg:pb-8">
       {/* ── Centre column ─────────────────────────────────────────── */}
-      <section className="flex flex-col gap-5">
-        <div className="flex items-center justify-end -mt-2">
-          <div className="flex bg-panel rounded-full p-1 border border-border shadow-card">
-            {RANGE_PILLS.map((r) => (
-              <button
-                key={r}
-                onClick={() => setRange(r)}
-                className={
-                  "px-3.5 py-1 rounded-full text-sm font-bold transition " +
-                  (range === r ? "bg-nav text-white" : "text-gray-dark hover:text-ink")
-                }
-              >
-                {r}
-              </button>
-            ))}
-          </div>
+      <section className="flex flex-col gap-4 lg:gap-5 min-w-0">
+        <div className="flex bg-panel rounded-full p-1 border border-border shadow-card lg:self-end">
+          {RANGE_PILLS.map((r) => (
+            <button
+              key={r}
+              onClick={() => setRange(r)}
+              className={
+                "flex-1 lg:flex-none px-3.5 py-1.5 rounded-full text-sm font-bold transition " +
+                (range === r ? "bg-nav text-white" : "text-gray-dark hover:text-ink")
+              }
+            >
+              {r}
+            </button>
+          ))}
         </div>
 
-        <div className="flex items-baseline justify-between">
-          <h1 className="text-5xl font-extrabold text-ink">{headline}</h1>
-          <div className="text-sm text-gray-dark">{formatRangeLabel(filtered)}</div>
+        <div className="lg:flex lg:items-baseline lg:justify-between">
+          <h1 className="text-3xl lg:text-5xl font-extrabold text-ink leading-tight">{headline}</h1>
+          <div className="text-sm text-gray-dark mt-1 lg:mt-0">{formatRangeLabel(filtered)}</div>
         </div>
 
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <Tile
             label="EST. 1RM"
             value={stats.est1RM.value > 0 ? `${Math.round(stats.est1RM.value)} kg` : "—"}
@@ -113,7 +113,7 @@ export function Progress() {
           />
           <Tile
             label="STREAK"
-            value={`${stats.streak.weeks} wks`}
+            value={`${stats.streak.weeks} ${stats.streak.weeks === 1 ? "wk" : "wks"}`}
             sub={`longest: ${stats.streak.longest}`}
           />
         </div>
@@ -133,7 +133,7 @@ export function Progress() {
       </section>
 
       {/* ── Right sidebar ─────────────────────────────────────────── */}
-      <aside className="flex flex-col gap-5 mt-9">
+      <aside className="flex flex-col gap-4 lg:gap-5 lg:mt-9 min-w-0">
         <div className="bg-panel rounded-3xl border border-border shadow-card p-5">
           <div className="flex items-baseline justify-between">
             <div className="text-[11px] font-bold tracking-widest text-gray-dark">
