@@ -74,6 +74,14 @@ export function QuickSettings({ onClose }: { onClose(): void }) {
           </div>
         </Section>
 
+        {/* Rep beep — the one sound people most want gone mid-set. */}
+        <Section title="Rep beep">
+          <div className="flex gap-2">
+            <Pill selected={s.repSound} onClick={() => set({ repSound: true })}>🔊 On</Pill>
+            <Pill selected={!s.repSound} onClick={() => set({ repSound: false })}>🔇 Muted</Pill>
+          </div>
+        </Section>
+
         {/* Tracking display */}
         <Section title="Tracking display">
           <div className="grid grid-cols-3 gap-2">

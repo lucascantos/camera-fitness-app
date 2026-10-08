@@ -10,6 +10,9 @@ export interface Settings {
   masterVol: number;
   musicVol: number;
   sfxVol: number;
+  // The beep on every counted rep. Milestone cues (target chime, arm switch,
+  // countdown) are unaffected.
+  repSound: boolean;
   theme: Theme;
   activePlanId: string | null;
   restSeconds: number;
@@ -29,6 +32,7 @@ const DEFAULTS: Settings = {
   masterVol: 1.0,
   musicVol: 0.45,
   sfxVol: 1.0,
+  repSound: true,
   theme: "fitpop",
   activePlanId: null,
   restSeconds: 60,
