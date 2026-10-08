@@ -61,7 +61,7 @@ export function isUnilateral(exercise: string): boolean {
   return Boolean(GEOMETRY[exercise]?.unilateral);
 }
 
-/** Returns a fresh tracker for the named exercise, or null for manual mode. */
+/** Returns a fresh tracker for the named exercise, or null if it has no geometry. */
 export function getTracker(exercise: string): ExerciseTracker | null {
   const geometry = GEOMETRY[exercise];
   if (!geometry) return null;

@@ -1,24 +1,19 @@
 // Live tracking diagnostics overlay (dev-only).
 //
-// Reading a trace back after the fact tells you what happened; watching this
-// while you do the reps tells you *why*. The strip plots the tracked joint
-// angle against the tracker's own work/rest threshold bands, so a rep that
-// doesn't count is immediately legible as one of: the angle never reached the
-// band, the posture gate froze the machine, the landmark was low-visibility, or
-// the frame rate collapsed and the confirm window ate the transition.
+// The angle graph itself is always on (training/LiveGraph). This panel adds
+// the numbers behind it — state, confirm window, visibility, frame rate, image
+// stats — so a rep that doesn't count is legible as one of: the angle never
+// reached the band, the posture gate froze the machine, the landmark was
+// low-visibility, or the frame rate collapsed and the confirm window ate the
+// transition. Plus the ground-truth buttons that label a recorded trace.
 //
-// Runs its own rAF loop and draws to a canvas rather than re-rendering React
-// per frame — the inference loop already owns the frame budget and a 30Hz React
-// tree update would compete with it.
+// Text refreshes at ~5Hz from a rAF loop rather than per pose frame.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import type { ExerciseTracker } from "@/tracking/exercises/types";
 import type { ImageStats } from "@/tracking/log/types";
 import { getLiveStats, getRepTapCount, markEvent, markRepTap } from "@/tracking/log/recorder";
 import { getDebugOptions } from "@/tracking/log/flag";
-import { drawTrace } from "./debug/traceCanvas";
-
-const HISTORY = 240;          // ~8s of trace at 30fps
 
 export interface DebugTraceProps {
   trackerRef: React.MutableRefObject<ExerciseTracker | null>;
@@ -30,11 +25,8 @@ export interface DebugTraceProps {
 }
 
 export function DebugTrace({ trackerRef, imageRef, fpsRef, onClose }: DebugTraceProps) {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [taps, setTaps] = useState(getRepTapCount);
   const repTapOn = getDebugOptions().repTap;
-  const angles = useRef<(number | null)[]>([]);
-  const reasons = useRef<string[]>([]);
   const [readout, setReadout] = useState<string[]>([]);
   const [collapsed, setCollapsed] = useState(false);
 
@@ -43,17 +35,7 @@ export function DebugTrace({ trackerRef, imageRef, fpsRef, onClose }: DebugTrace
     let lastText = 0;
 
     const tick = () => {
-      const t = trackerRef.current;
-      const d = t?.debug ?? null;
-
-      angles.current.push(d?.angle ?? null);
-      reasons.current.push(d?.reason ?? "");
-      if (angles.current.length > HISTORY) {
-        angles.current.shift();
-        reasons.current.shift();
-      }
-
-      drawTrace(canvasRef.current, angles.current, reasons.current, t?.bands ?? null);
+      const d = trackerRef.current?.debug ?? null;
 
       // Text at ~5Hz: enough to read, cheap enough not to matter.
       const now = performance.now();
@@ -125,13 +107,6 @@ export function DebugTrace({ trackerRef, imageRef, fpsRef, onClose }: DebugTrace
 
         {!collapsed && (
           <>
-            <canvas
-              ref={canvasRef}
-              width={HISTORY}
-              height={90}
-              className="w-full block"
-              style={{ imageRendering: "pixelated" }}
-            />
             <div className="px-3 py-2 font-mono text-[10px] leading-relaxed text-white/85">
               {readout.map((line, i) => (
                 <div key={i} className="truncate">{line}</div>

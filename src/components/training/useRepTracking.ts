@@ -2,7 +2,7 @@
 // MediaPipe loop that feeds it, the skeleton overlay, and the rep count the UI
 // renders. Training.tsx keeps the navigation and the session writes.
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PoseLandmarkerResult } from "@mediapipe/tasks-vision";
 import { useMediapipe } from "@/hooks/useMediapipe";
 import { getTracker } from "@/tracking/exercises/registry";
@@ -22,6 +22,11 @@ export interface RepTrackingArgs {
   exercise: string;
   targetReps: number;
   isAmrap: boolean;
+  /**
+   * False while the athlete is still setting up. The skeleton is drawn either
+   * way, but the tracker sees no frames until this turns true.
+   */
+  live: boolean;
   /** The set hit its target and auto-rest is on. */
   onAutoFinish(reps: number): void;
   /** Same, but diagnostics are recording — ask for the real count instead. */
@@ -31,7 +36,12 @@ export interface RepTrackingArgs {
 export function useRepTracking(args: RepTrackingArgs) {
   const { videoRef, canvasRef, exercise, targetReps, isAmrap } = args;
 
-  const trackerRef = useRef<ExerciseTracker | null>(null);
+  // Built during render, not in an effect: the HUD and the MediaPipe loop both
+  // read it on the very first render, and an effect would leave it null until
+  // something unrelated happened to re-render the screen.
+  const tracker = useMemo(() => getTracker(exercise), [exercise]);
+  const trackerRef = useRef<ExerciseTracker | null>(tracker);
+  trackerRef.current = tracker;
   const poseRendererRef = useRef(createPoseRenderer());
   const [reps, setReps] = useState(0);
   // For unilateral exercises (one-arm): which arm is currently being counted.
@@ -51,14 +61,12 @@ export function useRepTracking(args: RepTrackingArgs) {
   cbRef.current = args;
 
   useEffect(() => {
-    const tk = getTracker(exercise);
-    trackerRef.current = tk;
     setReps(0);
     lastRepRef.current = 0;
     // Unilateral exercises always start on the right arm.
     setSide("right");
-    tk?.setSide?.("right");
-  }, [exercise]);
+    tracker?.setSide?.("right");
+  }, [tracker]);
 
   /** Finish the current arm and move to the other one. */
   const switchToLeft = useCallback(() => {
@@ -80,6 +88,7 @@ export function useRepTracking(args: RepTrackingArgs) {
       canvasRef.current, videoRef.current, screenLms,
       poseRendererRef.current, getSettings().poseStyle,
     );
+    if (!cbRef.current.live) return;
 
     const t = trackerRef.current;
     if (!t || !screenLms) {
@@ -124,13 +133,13 @@ export function useRepTracking(args: RepTrackingArgs) {
     else setTimeout(() => cbRef.current.onAutoFinish(c), 600);
   }, [targetReps, isAmrap, side, switchToLeft, canvasRef, videoRef]);
 
-  const mp = useMediapipe(videoRef, onResult, !!trackerRef.current);
+  const mp = useMediapipe(videoRef, onResult, !!tracker);
 
   return {
     trackerRef,
     reps,
     side,
-    isUnilateral: trackerRef.current?.unilateral ?? false,
+    isUnilateral: tracker?.unilateral ?? false,
     switchToLeft,
     imageStatsRef,
     frameTimingRef,

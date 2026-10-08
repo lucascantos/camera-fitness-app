@@ -66,6 +66,14 @@ export default {
           "40%":  { transform: "scale(1.22)" },
           "100%": { transform: "scale(1)" },
         },
+        // Pre-set countdown: each number slams in large, holds, then shrinks
+        // away — one full cycle per second, replayed by remounting on change.
+        "count-in": {
+          "0%":   { opacity: "0", transform: "scale(2.2)" },
+          "25%":  { opacity: "1", transform: "scale(1)" },
+          "75%":  { opacity: "1", transform: "scale(1)" },
+          "100%": { opacity: "0", transform: "scale(0.6)" },
+        },
         // Set finished / arm switched: one pulse of the whole rep bar.
         "pulse-once": {
           "0%":   { transform: "scale(1)" },
@@ -84,6 +92,7 @@ export default {
         "dialog-out": "dialog-out 160ms ease-in both",
         pop:          "pop 220ms cubic-bezier(0.34,1.56,0.64,1) both",
         "pulse-once": "pulse-once 320ms ease-out both",
+        "count-in":   "count-in 1000ms cubic-bezier(0.22,1,0.36,1) both",
       },
     },
   },

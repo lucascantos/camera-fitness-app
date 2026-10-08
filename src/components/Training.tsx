@@ -20,6 +20,8 @@ import { MenuSheet } from "./training/MenuSheet";
 import { mutateWeight, recordActuals } from "./training/session";
 import { useRepTracking } from "./training/useRepTracking";
 import { useSetRecorder } from "./training/useSetRecorder";
+import { LiveGraph } from "./training/LiveGraph";
+import { SetStart, type SetPhase } from "./training/SetStart";
 
 export function Training() {
   const { session, workoutIdx, setIdx, setCursor, goTo, endSession } = useSessionStore();
@@ -27,6 +29,9 @@ export function Training() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [sheet, setSheet] = useState<null | "menu" | "set" | "settings">(null);
   const [debugOn, setDebugOn] = useState(isDebugLogging);
+  // Every set opens on the setup phase; Training remounts per set.
+  const [phase, setPhase] = useState<SetPhase>("setup");
+  const live = phase === "go" || phase === "live";
 
   const workout = session?.workouts[workoutIdx];
   const setRow = workout?.sets[setIdx];
@@ -36,14 +41,15 @@ export function Training() {
   const isAmrap = Boolean(setRow?.[2]);
 
   const tracking = useRepTracking({
-    videoRef, canvasRef, exercise, targetReps, isAmrap,
+    videoRef, canvasRef, exercise, targetReps, isAmrap, live,
     onAutoFinish: (reps) => finishSet(reps),
     onConfirmCount: () => setSheet("set"),
   });
   const { reps, side, isUnilateral, trackerRef } = tracking;
 
   useSetRecorder({
-    enabled: debugOn, active: !!workout, videoRef, stream, trackerRef,
+    // Trace only the set itself, not the minute spent placing the phone.
+    enabled: debugOn, active: !!workout && live, videoRef, stream, trackerRef,
     exercise, targetReps, weight, isAmrap, side, workoutIdx, setIdx,
   });
 
@@ -122,15 +128,25 @@ export function Training() {
         mpError={tracking.mpError}
         mpReady={tracking.mpReady}
         lowPerf={tracking.lowPerf}
-        tracked={!!trackerRef.current}
       />
 
-      <RepBar
-        reps={reps}
-        target={targetReps}
-        amrap={isAmrap}
-        pulseKey={`bar-${workoutIdx}-${setIdx}-${side}`}
-        onEndSet={() => setSheet("set")}
+      {live && trackerRef.current && <LiveGraph trackerRef={trackerRef} />}
+
+      {live && (
+        <RepBar
+          reps={reps}
+          target={targetReps}
+          amrap={isAmrap}
+          pulseKey={`bar-${workoutIdx}-${setIdx}-${side}`}
+          onEndSet={() => setSheet("set")}
+        />
+      )}
+
+      <SetStart
+        phase={phase}
+        onReady={() => setPhase("countdown")}
+        onGo={() => setPhase("go")}
+        onDone={() => setPhase("live")}
       />
 
       {debugOn && (

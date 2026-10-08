@@ -32,9 +32,9 @@ export function TopBar({ setIdx, unilateral, side, onBack, onMenu }: {
 }
 
 /** Status pills — only for states the user must act on. */
-export function StatusPills({ camError, mpError, mpReady, lowPerf, tracked }: {
+export function StatusPills({ camError, mpError, mpReady, lowPerf }: {
   camError: string | null; mpError: string | null;
-  mpReady: boolean; lowPerf: boolean; tracked: boolean;
+  mpReady: boolean; lowPerf: boolean;
 }) {
   return (
     <div
@@ -43,14 +43,11 @@ export function StatusPills({ camError, mpError, mpReady, lowPerf, tracked }: {
     >
       {camError && <Pill tone="error">Camera error: {camError}</Pill>}
       {mpError && <Pill tone="error">Pose model error: {mpError}</Pill>}
-      {tracked && !mpReady && !mpError && (
+      {!mpReady && !mpError && (
         <Pill tone="neutral">Loading pose model…</Pill>
       )}
       {lowPerf && mpReady && (
         <Pill tone="warn">Low performance — reduced tracking quality</Pill>
-      )}
-      {!tracked && (
-        <Pill tone="neutral">Manual mode — tap the counter when done</Pill>
       )}
     </div>
   );

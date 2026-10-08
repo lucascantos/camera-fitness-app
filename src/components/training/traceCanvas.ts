@@ -9,6 +9,8 @@ export function drawTrace(
   angles: (number | null)[],
   reasons: string[],
   bands: { work: number; rest: number; inverted: boolean } | null,
+  /** Samples the full width represents; the newest sample sits at the right edge. */
+  capacity: number,
 ) {
   if (!canvas) return;
   const ctx = canvas.getContext("2d");
@@ -20,6 +22,10 @@ export function drawTrace(
   ctx.fillStyle = "rgba(255,255,255,0.04)";
   ctx.fillRect(0, 0, w, h);
 
+  const dpr = typeof window === "undefined" ? 1 : window.devicePixelRatio || 1;
+  const step = w / Math.max(1, capacity - 1);
+  const offset = capacity - angles.length;
+  const x = (i: number) => (i + offset) * step;
   const y = (deg: number) => h - ((deg - ANGLE_MIN) / (ANGLE_MAX - ANGLE_MIN)) * h;
 
   if (bands) {
@@ -36,7 +42,7 @@ export function drawTrace(
     ctx.fillRect(0, restTop, w, restBot - restTop);
 
     ctx.strokeStyle = "rgba(255,255,255,0.35)";
-    ctx.lineWidth = 1;
+    ctx.lineWidth = dpr;
     for (const deg of [bands.work, bands.rest]) {
       ctx.beginPath();
       ctx.moveTo(0, y(deg) + 0.5);
@@ -53,19 +59,20 @@ export function drawTrace(
     else if (r === "missing-landmark" || r === "non-finite-angle") ctx.fillStyle = "rgba(255,220,0,0.5)";
     else if (r === "counted") ctx.fillStyle = "rgba(120,255,140,0.95)";
     else continue;
-    ctx.fillRect(i, 0, r === "counted" ? 2 : 1, h);
+    ctx.fillRect(x(i), 0, Math.max(dpr, step) * (r === "counted" ? 2 : 1), h);
   }
 
   ctx.strokeStyle = "#fff";
-  ctx.lineWidth = 1.5;
+  ctx.lineWidth = 2 * dpr;
+  ctx.lineJoin = "round";
   ctx.beginPath();
   let pen = false;
   for (let i = 0; i < angles.length; i++) {
     const a = angles[i];
     if (a == null) { pen = false; continue; }
     const py = y(a);
-    if (!pen) { ctx.moveTo(i, py); pen = true; }
-    else ctx.lineTo(i, py);
+    if (!pen) { ctx.moveTo(x(i), py); pen = true; }
+    else ctx.lineTo(x(i), py);
   }
   ctx.stroke();
 }

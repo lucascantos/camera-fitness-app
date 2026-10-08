@@ -128,3 +128,23 @@ export function fanfare(): void {
     osc.stop(t0 + 0.40);
   });
 }
+
+/**
+ * Pre-set countdown beep: a short tone on 3, 2 and 1, then a higher, longer
+ * one on "go" — the classic race-start pattern, so the start is audible
+ * without looking at the screen.
+ */
+export function countdownBeep(go = false): void {
+  const v = sfxVol(); if (v <= 0) return;
+  const c = getCtx();  if (!c) return;
+  const osc  = c.createOscillator();
+  const gain = c.createGain();
+  osc.connect(gain).connect(c.destination);
+  osc.type            = "triangle";
+  osc.frequency.value = go ? 1046.5 : 523.25;   // C6 on go, C5 on the count
+  const len = go ? 0.45 : 0.15;
+  gain.gain.setValueAtTime(v * 0.25, c.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + len);
+  osc.start();
+  osc.stop(c.currentTime + len + 0.01);
+}
