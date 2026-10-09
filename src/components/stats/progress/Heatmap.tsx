@@ -33,7 +33,7 @@ export function Heatmap({ grid }: { grid: ReturnType<typeof activityGrid> }) {
               x={i * (cell + gap)}
               y={9}
               fontSize="9"
-              fill="#8A8AA0"
+              className="fill-gray"
               fontFamily="Inter, sans-serif"
             >
               {MONTHS_SHORT[first.getMonth()]}
@@ -52,7 +52,7 @@ export function Heatmap({ grid }: { grid: ReturnType<typeof activityGrid> }) {
                 width={cell}
                 height={cell}
                 rx={2}
-                fill={future ? "#F3F2F8" : filled ? "#D8202C" : "#EDECF2"}
+                className={future ? "fill-panel-dark/50" : filled ? "fill-accent" : "fill-panel-dark"}
                 opacity={filled && c.count > 1 ? 1 : (filled ? 0.9 : 1)}
               />
             );

@@ -47,7 +47,7 @@ export function ContinueCard() {
       </div>
       <button
         onClick={() => goTo("training")}
-        className="shrink-0 bg-white text-good font-bold px-4 min-h-[44px] rounded-xl flex items-center gap-2 active:bg-panel-dark transition"
+        className="shrink-0 bg-white text-good font-bold px-4 min-h-[44px] rounded-xl flex items-center gap-2 active:bg-white/85 transition"
       >
         <PlayIcon size={11} />
         Continue

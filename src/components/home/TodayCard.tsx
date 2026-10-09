@@ -18,6 +18,8 @@ export function TodayCard({ plan, day, onStart, onCreatePlan }: {
   const estMin = Math.max(1, Math.round(nSets * 1.5)); // ~90s per set
 
   return (
+    // The chips and buttons are white in both themes, so their text is a fixed
+    // dark ink — the themed `text-ink` goes near-white in dark mode.
     <div className="bg-accent text-white rounded-3xl p-5">
       <div className="text-[11px] font-bold tracking-widest opacity-80">
         TODAY'S WORKOUT
@@ -34,7 +36,7 @@ export function TodayCard({ plan, day, onStart, onCreatePlan }: {
         {day?.exercises.map((e) => (
           <span
             key={e.exercise}
-            className="px-3.5 py-1.5 bg-white text-ink font-bold rounded-full text-sm"
+            className="px-3.5 py-1.5 bg-white text-[#1A1330] font-bold rounded-full text-sm"
           >
             {titleCase(e.exercise)}
           </span>
@@ -44,7 +46,7 @@ export function TodayCard({ plan, day, onStart, onCreatePlan }: {
       {day ? (
         <button
           onClick={onStart}
-          className="w-full mt-5 bg-white text-ink font-bold py-4 rounded-2xl text-lg flex items-center justify-center gap-3 active:bg-panel-dark transition"
+          className="w-full mt-5 bg-white text-[#1A1330] font-bold py-4 rounded-2xl text-lg flex items-center justify-center gap-3 active:bg-white/85 transition"
         >
           <PlayIcon size={14} color="#1A1330" />
           Start workout
@@ -52,7 +54,7 @@ export function TodayCard({ plan, day, onStart, onCreatePlan }: {
       ) : (
         <button
           onClick={onCreatePlan}
-          className="w-full mt-5 bg-white text-ink font-bold py-4 rounded-2xl text-lg active:bg-panel-dark transition"
+          className="w-full mt-5 bg-white text-[#1A1330] font-bold py-4 rounded-2xl text-lg active:bg-white/85 transition"
         >
           + Create a plan
         </button>

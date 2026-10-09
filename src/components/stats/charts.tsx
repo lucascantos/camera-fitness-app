@@ -83,10 +83,10 @@ export function LineChart({
               x1={PAD_L} x2={width - PAD_R}
               y1={PAD_T + (innerH * (2 - i)) / 2}
               y2={PAD_T + (innerH * (2 - i)) / 2}
-              stroke="#E2E0EA" strokeDasharray="3 3"
+              className="stroke-border" strokeDasharray="3 3"
             />
             <text x={4} y={PAD_T + (innerH * (2 - i)) / 2 + 4}
-              fontSize="10" fill="#8A8AA0" fontFamily="Inter, sans-serif">
+              fontSize="10" className="fill-gray" fontFamily="Inter, sans-serif">
               {Math.round(v)}
             </text>
           </g>
@@ -100,7 +100,7 @@ export function LineChart({
         {/* x labels */}
         {xLabels.map((l, i) => (
           <text key={i} x={l.x} y={height - 4}
-            fontSize="10" fill="#8A8AA0" textAnchor="middle"
+            fontSize="10" className="fill-gray" textAnchor="middle"
             fontFamily="Inter, sans-serif">
             {l.label}
           </text>
@@ -143,7 +143,7 @@ export function BarChart({
       >
         {/* baseline */}
         <line x1={PAD_L} x2={width - PAD_R}
-              y1={PAD_T + innerH} y2={PAD_T + innerH} stroke="#E2E0EA" />
+              y1={PAD_T + innerH} y2={PAD_T + innerH} className="stroke-border" />
         {/* bars */}
         {data.map((d, i) => {
           const h = (d.value / max) * innerH;
@@ -155,11 +155,12 @@ export function BarChart({
               <rect
                 x={x} y={y} width={barW} height={Math.max(2, h)}
                 rx={6}
-                fill={isLast ? color : "#1A1330"}
+                fill={isLast ? color : undefined}
+                className={isLast ? undefined : "fill-ink"}
                 opacity={isLast ? 1 : 0.85}
               />
               <text x={x + barW / 2} y={height - 4}
-                fontSize="10" fill="#8A8AA0" textAnchor="middle"
+                fontSize="10" className="fill-gray" textAnchor="middle"
                 fontFamily="Inter, sans-serif">
                 {d.label}
               </text>
@@ -167,7 +168,7 @@ export function BarChart({
           );
         })}
         {/* y-axis max */}
-        <text x={4} y={PAD_T + 8} fontSize="10" fill="#8A8AA0"
+        <text x={4} y={PAD_T + 8} fontSize="10" className="fill-gray"
           fontFamily="Inter, sans-serif">
           {Math.round(max)}
         </text>
