@@ -10,7 +10,6 @@ import { useRef, useState } from "react";
 import { useCamera } from "@/hooks/useCamera";
 import { useSessionStore } from "@/stores/sessionStore";
 import { QuickSettings } from "@/components/QuickSettings";
-import { DebugTrace } from "@/components/DebugTrace";
 import { isDebugLogging } from "@/tracking/log/flag";
 import * as logRecorder from "@/tracking/log/recorder";
 import { RepBar, StatusPills, TopBar } from "./training/TrainingHud";
@@ -29,7 +28,7 @@ export function Training() {
   const { videoRef, stream, error: camError } = useCamera();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [sheet, setSheet] = useState<null | "menu" | "set" | "settings" | "done">(null);
-  const [debugOn, setDebugOn] = useState(isDebugLogging);
+  const [debugOn] = useState(isDebugLogging);
   // Every set opens on the setup phase; Training remounts per set.
   const [phase, setPhase] = useState<SetPhase>("setup");
   const live = phase === "go" || phase === "live";
@@ -154,15 +153,6 @@ export function Training() {
         onGo={() => setPhase("go")}
         onDone={() => setPhase("live")}
       />
-
-      {debugOn && (
-        <DebugTrace
-          trackerRef={trackerRef}
-          imageRef={tracking.imageStatsRef}
-          fpsRef={tracking.frameTimingRef}
-          onClose={() => setDebugOn(false)}
-        />
-      )}
 
       {sheet === "done" && <SessionDone onNext={() => goTo("complete")} />}
       {sheet === "set" && (

@@ -33,13 +33,13 @@ export interface ExerciseTracker {
   /**
    * State-machine internals for the most recent feed(), or null before the
    * first frame. Diagnostics only — nothing here feeds back into counting.
-   * Consumed by the tracking log (src/tracking/log/) and the debug overlay,
-   * both of which are dev-only and off by default.
+   * Consumed by the live angle graph (training/LiveGraph) and the dev-only
+   * tracking log (src/tracking/log/).
    */
   debug?: TrackerDebug | null;
   /**
    * The angle thresholds this tracker switches on. Diagnostics only — lets the
-   * debug overlay draw the work/rest bands against the live angle instead of
+   * live angle graph draw the work/rest bands against the live angle instead of
    * duplicating each tracker's constants.
    */
   bands?: { work: number; rest: number; inverted: boolean };

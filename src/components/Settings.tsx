@@ -8,7 +8,6 @@ import { applyMusicVolume } from "@/audio/music";
 import { repBeep, setCompleteChime } from "@/audio/sfx";
 import { POSE_STYLES } from "@/tracking/poseRenderer";
 import { getGpuStatus } from "@/tracking/gpuStatus";
-import { TrackingDebugSection } from "@/components/TrackingDebugSection";
 import { Group, Pill, Slider, ToggleRow } from "./settings/controls";
 import { InstallSection } from "./settings/InstallSection";
 import { DataSection } from "./settings/DataSection";
@@ -125,7 +124,6 @@ export function Settings() {
 
       <InstallSection />
       <DataSection />
-      <TrackingDebugSection />
     </div>
   );
 }

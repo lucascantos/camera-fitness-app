@@ -2,8 +2,8 @@
 //
 // Recording is off for normal users and costs nothing when disabled: the
 // recorder's hot path checks this flag first and returns immediately. Enable
-// it with ?debug=1 in the URL (sticky — it writes the preference), or from the
-// Settings screen.
+// it with ?debug=1 in the URL (sticky — it writes the preference); ?debug=0
+// turns it back off.
 //
 // localStorage rather than IndexedDB on purpose: this is a small UI preference
 // that's fine to lose (CLAUDE.md development rule 2), and the flag has to be
@@ -33,11 +33,6 @@ export interface DebugOptions {
    * 0 uses the built-in default.
    */
   inferenceDim: number;
-  /**
-   * Show a large tap target during the set. Each tap timestamps one real rep,
-   * turning "counted 4, actual 10" into knowing *which* six were missed.
-   */
-  repTap: boolean;
 }
 
 const DEFAULTS: DebugOptions = {
@@ -48,11 +43,9 @@ const DEFAULTS: DebugOptions = {
   fullLandmarks: true,
   video: false,     // opt-in: records the user
   inferenceDim: 0,  // 0 = built-in default
-  repTap: false,
 };
 
 let _opts: DebugOptions = { ...DEFAULTS };
-const listeners = new Set<(o: DebugOptions) => void>();
 
 /** Read the stored flags and apply any ?debug= URL override. Call once at boot. */
 export function initDebugOptions(): DebugOptions {
@@ -80,19 +73,6 @@ export function getDebugOptions(): DebugOptions {
 /** The hot-path check. Kept trivial so the per-frame cost is a property read. */
 export function isDebugLogging(): boolean {
   return _opts.enabled;
-}
-
-export function setDebugOptions(patch: Partial<DebugOptions>): DebugOptions {
-  _opts = { ..._opts, ...patch };
-  persist();
-  for (const fn of listeners) fn(_opts);
-  return _opts;
-}
-
-/** Subscribe to flag changes; returns an unsubscribe function. */
-export function onDebugOptionsChange(fn: (o: DebugOptions) => void): () => void {
-  listeners.add(fn);
-  return () => listeners.delete(fn);
 }
 
 function persist() {

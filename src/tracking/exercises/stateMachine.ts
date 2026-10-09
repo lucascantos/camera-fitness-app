@@ -25,7 +25,7 @@ export interface StateMachineResult {
   cycles: number[];
   /** Rest extreme preceding each working phase. */
   restCycles: number[];
-  /** State after the final sample, for the debug overlay. */
+  /** State after the final sample, for diagnostics. */
   state: RepState;
   target: RepState;
   confirm: number;

@@ -13,7 +13,7 @@ import { getSettings } from "@/data/settings/settings";
 import { switchSideChime } from "@/audio/sfx";
 import { isDebugLogging } from "@/tracking/log/flag";
 import * as logRecorder from "@/tracking/log/recorder";
-import type { FrameMeta, ImageStats } from "@/tracking/log/types";
+import type { FrameMeta } from "@/tracking/log/types";
 import { announceRep, beepRep } from "./repFeedback";
 import { useSessionStore } from "@/stores/sessionStore";
 import { recordRep, recordSample } from "@/tracking/setTrace";
@@ -48,11 +48,6 @@ export function useRepTracking(args: RepTrackingArgs) {
   // "right" first, then "left"; the set advances only after both are done.
   const [side, setSide] = useState<Side>("right");
   const lastRepRef = useRef(0);
-
-  // Mirrors of the latest frame for the debug overlay, so it can read them
-  // without a React update per frame.
-  const imageStatsRef = useRef<ImageStats | null>(null);
-  const frameTimingRef = useRef({ fps: 0, dtMs: 0, skip: 0 });
 
   // Always point at the current render's callbacks: onResult is memoised and
   // would otherwise close over a stale set cursor, writing actuals onto the
@@ -95,7 +90,6 @@ export function useRepTracking(args: RepTrackingArgs) {
       // A frame with no pose at all is itself a finding — the user stepped out
       // of shot, or detection dropped — so it still goes in the trace.
       if (isDebugLogging()) {
-        frameTimingRef.current = { fps: meta.fps, dtMs: meta.dtMs, skip: meta.skip };
         logRecorder.recordFrame(null, null, null, lastRepRef.current, meta);
       }
       return;
@@ -114,9 +108,7 @@ export function useRepTracking(args: RepTrackingArgs) {
     }
 
     if (isDebugLogging()) {
-      frameTimingRef.current = { fps: meta.fps, dtMs: meta.dtMs, skip: meta.skip };
       logRecorder.recordFrame(screenLms, worldLms, t.debug ?? null, c, meta);
-      imageStatsRef.current = logRecorder.getLastImageStats();
     }
 
     if (c === lastRepRef.current) return;
@@ -151,8 +143,6 @@ export function useRepTracking(args: RepTrackingArgs) {
     side,
     isUnilateral: tracker?.unilateral ?? false,
     switchToLeft,
-    imageStatsRef,
-    frameTimingRef,
     mpReady: mp.ready,
     mpError: mp.error,
     lowPerf: mp.lowPerf,

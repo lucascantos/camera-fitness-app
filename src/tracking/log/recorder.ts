@@ -21,37 +21,12 @@ import {
 } from "./activeSet";
 import { flattenScreen, flattenWorld } from "./flatten";
 import { persistSet, type SetResult } from "./persist";
-import type { FrameMeta, FrameSample, GroundTruthEvent, ImageStats, TrackerDebug } from "./types";
+import type { FrameMeta, FrameSample, TrackerDebug } from "./types";
 
 export type { BeginSetArgs } from "./activeSet";
 
 let active: ActiveSet | null = null;
 let visibilityBound = false;
-// Cached so the debug overlay can display the current exposure/motion figures
-// without paying for a second sample of the same frame.
-let lastImage: ImageStats | null = null;
-
-export function getLastImageStats(): ImageStats | null {
-  return lastImage;
-}
-
-/** Live counters for the on-screen debug overlay. */
-export interface LiveStats {
-  recording: boolean;
-  frames: number;
-  droppedFrames: number;
-  elapsedMs: number;
-}
-
-export function getLiveStats(): LiveStats {
-  if (!active) return { recording: false, frames: 0, droppedFrames: 0, elapsedMs: 0 };
-  return {
-    recording: true,
-    frames: active.wrapped ? MAX_FRAMES : active.head,
-    droppedFrames: active.wrapped ? active.head : 0,
-    elapsedMs: performance.now() - active.t0,
-  };
-}
 
 export function isRecording(): boolean {
   return active !== null;
@@ -99,14 +74,12 @@ export function recordFrame(
     a.context.videoHeight = a.video.videoHeight;
   }
 
-  lastImage = opts.imageStats && a.video ? sampleImageStats(a.video) : null;
-
   const sample: FrameSample = {
     t,
     meta,
     screen: flattenScreen(screen, opts.fullLandmarks),
     world: flattenWorld(world, opts.fullLandmarks),
-    image: lastImage,
+    image: opts.imageStats && a.video ? sampleImageStats(a.video) : null,
     orientation: opts.orientation ? getOrientation() : null,
     tracker,
     reps,
@@ -121,33 +94,6 @@ export function recordFrame(
       a.lastKeyframeAt = t;
     }
   }
-}
-
-/**
- * Log a user correction against the current trace. "missed-rep" means the user
- * did a rep the tracker ignored; "false-rep" means it counted something that
- * wasn't one. These are the timestamps you scrub to when reading a trace back.
- */
-export function markEvent(kind: GroundTruthEvent["kind"]): void {
-  const a = active;
-  if (!a) return;
-  a.events.push({ t: Math.round(performance.now() - a.t0), kind });
-}
-
-/**
- * The athlete tapped to mark one real rep. Timestamps are what turn a net
- * miscount into knowing which reps were missed and when.
- */
-export function markRepTap(): number {
-  const a = active;
-  if (!a) return 0;
-  a.repTaps.push(Math.round(performance.now() - a.t0));
-  return a.repTaps.length;
-}
-
-/** How many rep taps have been recorded for the live set. */
-export function getRepTapCount(): number {
-  return active?.repTaps.length ?? 0;
 }
 
 /**
