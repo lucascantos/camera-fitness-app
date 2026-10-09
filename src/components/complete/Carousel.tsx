@@ -122,7 +122,7 @@ export function Dots({ count, index, onIndex }: {
   count: number; index: number; onIndex(i: number): void;
 }) {
   return (
-    <div className="flex justify-center gap-1.5 mt-4">
+    <div className="flex justify-center gap-1.5 mt-2">
       {Array.from({ length: count }, (_, i) => (
         <button
           key={i}

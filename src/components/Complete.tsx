@@ -92,15 +92,19 @@ export function Complete() {
     : [summaryCard];
 
   return (
-    <div onClick={done ? undefined : skip} className="min-h-full p-4 pb-8 select-none">
-      <Carousel index={page} onIndex={setPage}>{pages}</Carousel>
+    // Fills the screen exactly: the cards scroll on their own, and the dots +
+    // Home stay pinned below them so Home never ends up off-screen.
+    <div onClick={done ? undefined : skip} className="h-full flex flex-col select-none">
+      <div className="flex-1 min-h-0 overflow-y-auto px-4 pt-4 pb-2">
+        <Carousel index={page} onIndex={setPage}>{pages}</Carousel>
+      </div>
 
       {done && (
-        <div className={skipped ? "" : "animate-row-in"}>
+        <div className={"shrink-0 px-4 pb-4 " + (skipped ? "" : "animate-row-in")}>
           {n > 0 && <Dots count={n + 1} index={page} onIndex={setPage} />}
           <button
             onClick={endSession}
-            className="mt-5 w-full bg-accent text-on_accent font-extrabold text-xl py-4 rounded-2xl shadow-lg"
+            className="mt-3 w-full bg-accent text-on_accent font-extrabold text-xl py-4 rounded-2xl shadow-lg"
           >
             Home
           </button>
