@@ -8,6 +8,7 @@ import { changePct, type SummaryRow } from "./summary";
 import { formatTop } from "./detail";
 import { SetBars, Tile, Trend } from "./detailParts";
 import { RepCurve } from "./RepCurve";
+import { VerdictLine } from "./VerdictLine";
 
 export function DetailCard({ row, active, instant }: {
   row: SummaryRow;
@@ -55,6 +56,11 @@ export function DetailCard({ row, active, instant }: {
       )}
 
       <Section title="COMPARED TO LAST TIME">
+        {row.verdict && (
+          <div className="bg-panel-dark rounded-2xl px-4 py-3 mb-2 font-extrabold">
+            <VerdictLine verdict={row.verdict} />
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-2">
           <Tile
             label="VOLUME"

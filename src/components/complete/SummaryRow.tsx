@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { titleCase } from "@/lib/format";
 import { changePct, type SummaryRow as Row } from "./summary";
 import { useCountUp } from "./useTimeline";
+import { VerdictLine } from "./VerdictLine";
 
 const fmt = (n: number) => Math.round(n).toLocaleString();
 
@@ -28,7 +29,9 @@ export function SummaryRow({ row, highlight, instant, onOpen }: {
 
   const value = useCountUp(row.today, grown, instant);
   const pct = changePct(row);
-  const improved = pct !== null && pct > 0;
+  // The bar turns green on the verdict, not raw volume, so it never contradicts
+  // the line beneath it (more volume at a lighter weight isn't "progress").
+  const improved = row.verdict ? row.verdict.kind === "progress" : pct !== null && pct > 0;
 
   // Headroom so a beaten ghost still visibly sits short of the end.
   const scale = Math.max(row.today, row.last ?? 0) * 1.08 || 1;
@@ -69,13 +72,11 @@ export function SummaryRow({ row, highlight, instant, onOpen }: {
         />
       </div>
 
-      <div className="mt-2 text-sm font-bold h-5">
+      <div className="mt-2 text-sm font-bold h-5 truncate">
         {row.firstTime ? (
           <span className="text-coin">First time!</span>
-        ) : improved ? (
-          <span className="text-good">▲ {pct}% vs last time</span>
-        ) : pct === 0 ? (
-          <span className="text-ink">= Matched last time</span>
+        ) : row.verdict ? (
+          <VerdictLine verdict={row.verdict} />
         ) : row.last != null ? (
           <span className="text-gray-dark font-semibold">Last time {fmt(row.last)} {row.unit}</span>
         ) : null}

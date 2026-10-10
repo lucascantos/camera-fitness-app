@@ -12,6 +12,7 @@ import { recapExercise } from "@/components/training/recap";
 import { buildDetail, type ExerciseDetail } from "./detail";
 import { repMotion } from "./motion";
 import { tracesFor } from "@/tracking/setTrace";
+import { judge, type Verdict } from "@/data/stats/verdict";
 
 export interface SummaryRow {
   exercise: string;
@@ -23,6 +24,8 @@ export interface SummaryRow {
   /** Nothing in history at all — a first. */
   firstTime: boolean;
   best: "weight" | "reps" | null;
+  /** Progress / holding / below vs last time; null when nothing fair to compare. */
+  verdict: Verdict | null;
   /** Everything the exercise's own card shows. */
   detail: ExerciseDetail;
 }
@@ -80,6 +83,7 @@ export function buildSummary(session: Session): SessionSummary {
       last: prev && prev.unit === today.unit ? prev.value : null,
       firstTime: prevSets === null,
       best: recapExercise(w.exercise, w.sets).best,
+      verdict: judge(done, prevSets),
       detail: buildDetail(
         w.exercise, w.sets, today.unit, (sets) => measure(sets).value,
         repMotion(w.exercise, tracesFor(session.sessionId, wi)),
