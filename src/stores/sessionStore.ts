@@ -8,6 +8,7 @@ export type SceneName =
   | "exercises"
   | "stats"
   | "settings"
+  | "preview"
   | "training"
   | "rest"
   | "transition"

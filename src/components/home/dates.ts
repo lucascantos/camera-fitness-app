@@ -1,9 +1,6 @@
-// Date helpers for the Home screen's week strip and header.
+// Date helpers for the Home screen's week strip.
 
 import type { HistoryEntry } from "@/data/athlete/athlete";
-
-const DAY_NAMES_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 export const DAY_LETTERS = ["M", "T", "W", "T", "F", "S", "S"] as const;
 
@@ -36,17 +33,4 @@ export function weekCompletedDays(history: HistoryEntry[]): Set<number> {
     if (d >= monday && d <= sunday) out.add(mondayIndex(d));
   }
   return out;
-}
-
-export function formatHeaderDate(d: Date): string {
-  const wd = DAY_NAMES_SHORT[mondayIndex(d)].toUpperCase();
-  const mo = MONTHS_SHORT[d.getMonth()].toUpperCase();
-  return `${wd} · ${mo} ${d.getDate()}`;
-}
-
-export function formatHistoryDate(d: Date): string {
-  const wd = DAY_NAMES_SHORT[mondayIndex(d)];
-  const mo = MONTHS_SHORT[d.getMonth()];
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${wd} · ${mo} ${day}`;
 }

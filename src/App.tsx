@@ -18,6 +18,7 @@ import { NextExercise }      from "@/components/NextExercise";
 import { Complete }          from "@/components/Complete";
 import { Stats }             from "@/components/Stats";
 import { Settings }          from "@/components/Settings";
+import { SessionPreview }    from "@/components/SessionPreview";
 import { SessionRecovery }   from "@/components/SessionRecovery";
 
 export default function App() {
@@ -30,8 +31,9 @@ export default function App() {
     scene === "training" || scene === "rest" ||
     scene === "transition" || scene === "complete";
 
-  // Scenes that hide TopNav and BottomNav.
-  const chromeless = workoutFlow;
+  // Scenes that hide TopNav and BottomNav: the workout, and the preview
+  // screen leading into it.
+  const chromeless = workoutFlow || scene === "preview";
 
   // Keep the screen awake for the whole workout flow (training + rest +
   // transition + complete), where the user often isn't touching the phone.
@@ -90,6 +92,7 @@ export default function App() {
         {scene === "home"      && <Home      />}
         {scene === "plans"     && <Plans     />}
         {scene === "exercises" && <Exercises />}
+        {scene === "preview"   && <SessionPreview />}
         {scene === "training"  && <Training  />}
         {scene === "rest"        && <Rest         />}
         {scene === "transition"  && <NextExercise />}

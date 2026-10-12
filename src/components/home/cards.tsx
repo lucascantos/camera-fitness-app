@@ -5,28 +5,6 @@ import { PlayIcon } from "@/components/icons";
 import { titleCase } from "@/lib/format";
 import { DAY_LETTERS } from "./dates";
 
-export function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <div className="text-[10px] font-bold tracking-widest opacity-80">
-        {label}
-      </div>
-      <div className="text-3xl font-extrabold mt-1">{value}</div>
-    </div>
-  );
-}
-
-export function Tile({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="bg-panel-dark rounded-xl p-4">
-      <div className="text-[10px] font-bold tracking-widest text-gray-dark">
-        {label}
-      </div>
-      <div className="text-3xl font-extrabold mt-2 text-ink">{value}</div>
-    </div>
-  );
-}
-
 export function ContinueCard() {
   const { session, workoutIdx, setIdx, goTo } = useSessionStore();
   if (!session) return null;

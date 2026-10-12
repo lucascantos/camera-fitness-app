@@ -13,10 +13,12 @@ const GAP = 12;
 const DECIDE_PX = 8;          // movement before we commit to a direction
 const FLICK = 0.45;           // px/ms that counts as a flick
 
-export function Carousel({ index, onIndex, children }: {
+export function Carousel({ index, onIndex, children, gutter }: {
   index: number;
   onIndex(i: number): void;
   children: ReactNode[];
+  /** Full-width pages inset by this many px each side, with no peek. */
+  gutter?: number;
 }) {
   const boxRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
@@ -35,9 +37,10 @@ export function Carousel({ index, onIndex, children }: {
   }, []);
 
   const n = children.length;
-  const page = width * PAGE_FRACTION;
+  const page = gutter !== undefined ? width - 2 * gutter : width * PAGE_FRACTION;
+  const gap = gutter !== undefined ? 2 * gutter : GAP;
   const lead = (width - page) / 2;
-  const x = lead - index * (page + GAP) + drag;
+  const x = lead - index * (page + gap) + drag;
 
   const onPointerDown = (e: React.PointerEvent) => {
     g.current = { x: e.clientX, y: e.clientY, t: performance.now(), mode: "pending" };
@@ -91,7 +94,7 @@ export function Carousel({ index, onIndex, children }: {
       <div
         className="flex items-start will-change-transform"
         style={{
-          gap: GAP,
+          gap,
           transform: `translateX(${x}px)`,
           transition: dragging ? "none" : "transform 450ms cubic-bezier(0.22,1,0.36,1)",
         }}
