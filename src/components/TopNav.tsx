@@ -1,4 +1,4 @@
-// App header — wordmark on the left, settings on the right.
+// App header — the weekly streak on Home's left, settings on the right.
 //
 // The navigation tabs that used to live here moved to BottomNav: four pill
 // tabs plus a wordmark and two icon buttons could not fit a 375px viewport,
@@ -6,16 +6,14 @@
 
 import { useSessionStore } from "@/stores/sessionStore";
 import { GearIcon } from "@/components/icons";
+import { StreakBadge } from "@/components/home/StreakBadge";
 
 export function TopNav() {
-  const { goTo } = useSessionStore();
+  const { goTo, scene } = useSessionStore();
 
   return (
     <header className="flex items-center justify-between px-4 pt-3 pb-2 bg-bg">
-      <div className="flex items-center">
-        <span className="text-lg font-extrabold tracking-tight text-accent">CAMERA</span>
-        <span className="text-lg font-extrabold tracking-tight text-ink ml-1">FITNESS</span>
-      </div>
+      {scene === "home" ? <StreakBadge /> : <div />}
 
       <div className="flex items-center gap-2">
         <button

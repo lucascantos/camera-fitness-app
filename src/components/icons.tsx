@@ -97,6 +97,14 @@ export function GearIcon({ size = 18 }: { size?: number }) {
   );
 }
 
+export function FlameIcon({ size = 18 }: { size?: number }) {
+  return (
+    <NavSvg size={size}>
+      <path d="M12 10.9c2.3-3.3.2-7.8-1-8.9 0 3.4-2.2 5.3-3.7 6.7C5.9 10.1 5 12.3 5 14.3 5 18 8.1 21 12 21s7-3 7-6.7c0-1.7-1.2-4.4-2.3-5.6-2.1 3.4-3.3 3.4-4.7 1.2z" />
+    </NavSvg>
+  );
+}
+
 export function FilterIcon({ size = 18 }: { size?: number }) {
   return (
     <NavSvg size={size}>

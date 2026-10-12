@@ -17,6 +17,7 @@ const THEMES: { id: Theme; label: string }[] = [
   { id: "fitpop", label: "Light" },
   { id: "dark", label: "Dark" },
 ];
+const WEEKLY_GOALS = [1, 2, 3, 4, 5, 6, 7];
 const WEIGHT_STEPS = [0.5, 1.0, 2.5, 5.0];
 const REST_STEPS = [30, 60, 90, 120, 180];
 
@@ -53,6 +54,14 @@ export function Settings() {
         {THEMES.map((t) => (
           <Pill key={t.id} selected={s.theme === t.id} onClick={() => set({ theme: t.id })}>
             {t.label}
+          </Pill>
+        ))}
+      </Group>
+
+      <Group label="Workouts per week">
+        {WEEKLY_GOALS.map((n) => (
+          <Pill key={n} selected={s.weeklyGoal === n} onClick={() => set({ weeklyGoal: n })}>
+            {n}
           </Pill>
         ))}
       </Group>

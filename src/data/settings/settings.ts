@@ -19,6 +19,8 @@ export interface Settings {
   // Notify when rest ends while the app is in the background (opt-in).
   restAlerts: boolean;
   weightStep: number;
+  // Training days a week the athlete aims for; drives the Home streak.
+  weeklyGoal: number;
   favoriteExercises: string[];
   // Pose overlay display style (skeleton / smooth / spring / aura / polygons).
   poseStyle: PoseStyle;
@@ -38,6 +40,7 @@ const DEFAULTS: Settings = {
   restSeconds: 60,
   restAlerts: false,
   weightStep: 1.0,
+  weeklyGoal: 3,
   favoriteExercises: [],
   poseStyle: "spring",
   name: "",
