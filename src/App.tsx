@@ -6,6 +6,7 @@ import { useSessionStore, loadPersistedSession } from "@/stores/sessionStore";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import { unlockAudio } from "@/audio/sfx";
 import { startMusic } from "@/audio/music";
+import { dismissSplash } from "@/splash";
 
 import { TopNav }            from "@/components/TopNav";
 import { BottomNav }         from "@/components/BottomNav";
@@ -69,6 +70,9 @@ export default function App() {
       window.removeEventListener("keydown",     onFirstGesture);
     };
   }, []);
+
+  // Play the splash exit once the app has rendered underneath it.
+  useEffect(() => { if (ready) dismissSplash(); }, [ready]);
 
   if (!ready) {
     return (

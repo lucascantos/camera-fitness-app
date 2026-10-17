@@ -57,7 +57,7 @@ export default defineConfig(async ({ command, mode, isPreview }) => {
       // devOptions stays disabled: a service worker fighting Vite's dev-mode
       // HMR causes more confusion than it's worth. Verify installability with
       // `npm run build && npm run preview` instead.
-      includeAssets: ["icons/apple-touch-icon.png"],
+      includeAssets: ["icons/apple-touch-icon.png", "icons/icon.svg"],
       manifest: {
         name: "Camera Fitness",
         short_name: "CamFitness",
@@ -66,15 +66,22 @@ export default defineConfig(async ({ command, mode, isPreview }) => {
           "and track progress. No account, no server — your data stays on " +
           "your device.",
         theme_color: "#12101B",
+        // Android's launch screen: this colour plus the maskable icon in a
+        // circle. The page's splash (index.html, --sp-bg) starts as an exact
+        // copy of it, so keep the two equal.
         background_color: "#12101B",
         display: "standalone",
         orientation: "portrait",
         // start_url / scope intentionally omitted: vite-plugin-pwa derives
         // them from the `base` below (github.io sub-path in prod, "/" in
         // dev), so we don't have to keep two sources of truth in sync.
+        // "any" is the full design; "maskable" shrinks it into the safe zone
+        // so Android's circle/squircle crop keeps the green corners.
         icons: [
-          { src: "icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any maskable" },
-          { src: "icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any maskable" },
+          { src: "icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+          { src: "icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+          { src: "icons/icon-maskable-192.png", sizes: "192x192", type: "image/png", purpose: "maskable" },
+          { src: "icons/icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
         ],
       },
       workbox: {
