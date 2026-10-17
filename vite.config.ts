@@ -57,7 +57,7 @@ export default defineConfig(async ({ command, mode, isPreview }) => {
       // devOptions stays disabled: a service worker fighting Vite's dev-mode
       // HMR causes more confusion than it's worth. Verify installability with
       // `npm run build && npm run preview` instead.
-      includeAssets: ["icons/apple-touch-icon.png", "icons/icon.svg"],
+      includeAssets: ["icons/apple-touch-icon.png"],
       manifest: {
         name: "Camera Fitness",
         short_name: "CamFitness",

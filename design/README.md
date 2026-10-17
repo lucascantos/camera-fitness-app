@@ -88,3 +88,20 @@ should be treated as legacy, not as precedent:
 
 Item 5 is the important one: brief any redesign on the **new Training screen's**
 vocabulary, not on the desktop scenes, or you'll get the same mismatch back.
+
+---
+
+## App icon
+
+`icon.svg` is the source artwork (exported from Figma): diamond-gradient
+background, four green corners, a floor shadow and the character as an embedded
+PNG. The files the app ships are rendered from it with headless Chrome:
+
+| File | What it is |
+|---|---|
+| `public/icons/icon-{192,512}.png`, `apple-touch-icon.png` (180) | The full design ("any" purpose; browser tab, iOS) |
+| `public/icons/icon-maskable-{192,512}.png` | Corners, shadow and character shrunk to 68% over the full-bleed background, so Android's circle crop keeps them |
+| Splash in `index.html` | The background as inline SVG, plus the shadow and character baked into one inline WebP layer (they fade together) |
+
+If the artwork changes, re-render all three so Android's launch screen and the
+page's first frame still match.
