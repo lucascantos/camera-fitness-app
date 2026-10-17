@@ -1,4 +1,4 @@
-// Metric tile and progression delta badge for the Progress tab.
+// Metric tile for the Progress tab.
 
 export function Tile({ label, value, sub, delta, deltaUnit, deltaFmt }: {
   label: string;
@@ -28,19 +28,6 @@ export function Tile({ label, value, sub, delta, deltaUnit, deltaFmt }: {
           {arrow} {printed}
         </div>
       )}
-    </div>
-  );
-}
-
-export function DeltaBadge({ delta }: { delta: number }) {
-  if (Math.abs(delta) < 0.05) {
-    return <div className="text-xs text-gray-dark">+0.0 kg</div>;
-  }
-  const color = delta > 0 ? "text-good" : "text-accent";
-  const sign  = delta > 0 ? "+" : "−";
-  return (
-    <div className={`text-xs font-bold ${color}`}>
-      {sign}{Math.abs(delta).toFixed(1)} kg
     </div>
   );
 }

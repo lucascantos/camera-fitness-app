@@ -7,15 +7,15 @@ import {
   filterByRange,
   formatRangeLabel,
   oneRmSeries,
-  progressionRows,
   topExercisesByRecentVolume,
   weeklyVolume,
   RANGE_SESSION_GOAL,
   type TimeRange,
 } from "@/data/stats/progress";
 import { headlineCopy, headlineStats } from "@/data/stats/headline";
-import { fmtVolume, titleCase } from "@/lib/format";
-import { DeltaBadge, Tile } from "./progress/parts";
+import { liftRows, tallyVerdicts } from "@/data/stats/liftVerdicts";
+import { Tile } from "./progress/parts";
+import { LiftList } from "./progress/LiftList";
 import { Heatmap } from "./progress/Heatmap";
 import { OneRmCard, WeeklyVolumeCard } from "./progress/ChartCards";
 
@@ -44,9 +44,10 @@ export function Progress() {
     s.sessions.goal = RANGE_SESSION_GOAL[range];
     return s;
   }, [history, filtered, range]);
-  const headline = useMemo(() => headlineCopy(stats), [stats]);
+  const lifts    = useMemo(() => liftRows(history, filtered), [history, filtered]);
+  const tally    = useMemo(() => tallyVerdicts(lifts), [lifts]);
+  const headline = useMemo(() => headlineCopy(stats, tally), [stats, tally]);
   const weekly   = useMemo(() => weeklyVolume(filtered), [filtered]);
-  const progRows = useMemo(() => progressionRows(history, filtered, 4), [history, filtered]);
 
   const [chartExercise, setChartExercise] = useState<string | null>(null);
   // Always show the 5 main lifts; append any non-main exercises that have
@@ -94,17 +95,14 @@ export function Progress() {
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <Tile
-            label="EST. 1RM"
-            value={stats.est1RM.value > 0 ? `${Math.round(stats.est1RM.value)} kg` : "—"}
-            sub={stats.est1RM.exercise !== "—" ? titleCase(stats.est1RM.exercise) : ""}
-            delta={stats.est1RM.delta}
-            deltaUnit=" kg"
+            label="PROGRESSED"
+            value={tally.judged > 0 ? `${tally.progressed} / ${tally.judged}` : "—"}
+            sub="sessions beat the last"
           />
           <Tile
-            label="VOLUME / WK"
-            value={fmtVolume(stats.volumeWk.value)}
-            delta={stats.volumeWk.delta}
-            deltaFmt={fmtVolume}
+            label="LIFTS UP"
+            value={tally.lifts > 0 ? `${tally.liftsUp} / ${tally.lifts}` : "—"}
+            sub="over this range"
           />
           <Tile
             label="SESSIONS"
@@ -146,25 +144,7 @@ export function Progress() {
           <Heatmap grid={heat} />
         </div>
 
-        <div className="bg-panel rounded-3xl border border-border shadow-card p-5">
-          <div className="text-[11px] font-bold tracking-widest text-gray-dark mb-3">
-            PROGRESSION
-          </div>
-          {progRows.length === 0 && (
-            <div className="text-sm text-gray-dark">No progression to show yet.</div>
-          )}
-          {progRows.map((r) => (
-            <div key={r.exercise} className="flex items-center justify-between py-2">
-              <div className="min-w-0">
-                <div className="font-bold text-ink truncate">{titleCase(r.exercise)}</div>
-                <div className="text-xs text-gray-dark">
-                  {r.best > 0 ? `${Math.round(r.best)} kg · PR ${r.daysAgo}d ago` : "—"}
-                </div>
-              </div>
-              <DeltaBadge delta={r.deltaKg} />
-            </div>
-          ))}
-        </div>
+        <LiftList rows={lifts} />
       </aside>
     </div>
   );

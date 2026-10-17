@@ -3,7 +3,7 @@
 // Date arithmetic is in ./dates; the headline tiles are in ./headline.
 
 import type { HistoryEntry } from "@/data/athlete/athlete";
-import { diffDays, fmtDate, isoWeekKey, mondayOf, parseISODate } from "./dates";
+import { fmtDate, isoWeekKey, mondayOf, parseISODate } from "./dates";
 
 export type TimeRange = "W" | "M" | "3M" | "Y" | "All";
 
@@ -129,42 +129,4 @@ export function activityGrid(history: HistoryEntry[], weeks = 12): HeatCell[][] 
     out.push(col);
   }
   return out;
-}
-
-// ── Progression deltas ──────────────────────────────────────────────────
-export interface ProgressionRow {
-  exercise: string;
-  best: number;       // Epley estimate
-  deltaKg: number;    // vs prior period
-  daysAgo: number;    // days since the best set
-}
-
-export function progressionRows(history: HistoryEntry[], f: FilteredHistory, n = 4): ProgressionRow[] {
-  // Top exercises by recent volume so the list isn't dominated by one lift.
-  const exercises = topExercisesByRecentVolume(f, n);
-  const today = new Date();
-  return exercises.map((ex) => {
-    let bestVal = 0;
-    let bestDate: Date | null = null;
-    // Prior best is the same scan restricted to before the range start.
-    let priorBest = 0;
-    for (const e of history) {
-      const d = parseISODate(e.date);
-      if (!d) continue;
-      for (const x of e.exercises) {
-        if (x.exercise !== ex) continue;
-        for (const s of x.sets) {
-          const v = epley(s.weight, s.reps);
-          if (v > bestVal) { bestVal = v; bestDate = d; }
-          if (d < f.rangeStart && v > priorBest) priorBest = v;
-        }
-      }
-    }
-    return {
-      exercise: ex,
-      best: bestVal,
-      deltaKg: bestVal - priorBest,
-      daysAgo: bestDate ? Math.max(0, diffDays(today, bestDate)) : 0,
-    };
-  });
 }
