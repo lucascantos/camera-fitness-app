@@ -1,6 +1,6 @@
 // Live-session mutations made from the training screen.
 
-import type { Session } from "@/data/plans/plans";
+import type { Effort, Session } from "@/data/plans/plans";
 import { useSessionStore } from "@/stores/sessionStore";
 
 /** Store what the athlete actually did for this set (reps + working weight). */
@@ -9,6 +9,14 @@ export function recordActuals(
   actuals: { reps: number; weight: number },
 ) {
   session.workouts[wi].sets[si][3] = actuals;
+  useSessionStore.setState({ session: { ...session } });
+}
+
+/** Rate how hard a finished set felt; ignored if the set has no result yet. */
+export function recordEffort(session: Session, wi: number, si: number, effort: Effort) {
+  const actuals = session.workouts[wi]?.sets[si]?.[3];
+  if (!actuals) return;
+  actuals.effort = effort;
   useSessionStore.setState({ session: { ...session } });
 }
 

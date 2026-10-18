@@ -3,10 +3,12 @@
 import { useSessionStore } from "@/stores/sessionStore";
 import { getSettings } from "@/data/settings/settings";
 import { useRestTimer } from "@/hooks/useRestTimer";
+import { EffortRow } from "./rest/EffortRow";
+import { TipCard } from "./rest/TipCard";
 
 export function Rest() {
   const duration = getSettings().restSeconds;
-  const { goTo } = useSessionStore();
+  const { goTo, session, workoutIdx, setIdx } = useSessionStore();
   const remaining = useRestTimer(duration, () => goTo("training"));
 
   const pct = Math.max(0, (remaining / duration) * 100);
@@ -29,7 +31,10 @@ export function Rest() {
           Skip Rest  →
         </button>
       </div>
+      {/* The cursor already points at the coming set: rate the one just done. */}
+      {session && <EffortRow session={session} wi={workoutIdx} si={setIdx - 1} />}
       <NextSet />
+      <TipCard exercise={session?.workouts[workoutIdx]?.exercise} />
     </div>
   );
 }

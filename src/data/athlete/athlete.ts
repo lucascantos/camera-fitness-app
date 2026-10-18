@@ -6,6 +6,8 @@ import { kvGet, kvSet } from "@/data/db";
 export interface HistorySet {
   reps: number;
   weight: number;
+  /** 0 very easy … 10 very hard (one decimal), when rated during rest. */
+  effort?: number;
 }
 
 export interface HistoryExercise {

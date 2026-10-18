@@ -5,7 +5,14 @@ import { kvGet, kvSet } from "@/data/db";
 import { getSettings, updateSettings } from "@/data/settings/settings";
 
 export type PrescribedSet = [reps: number, weight: number, isAmrap: boolean];
-export interface SetActuals { reps: number; weight: number; }
+export interface SetActuals {
+  reps: number;
+  weight: number;
+  /** How hard the set felt, rated on the rest screen: 0 very easy … 10 very hard. */
+  effort?: Effort;
+}
+/** 0–10, one decimal (e.g. 7.5). 10 = nothing left in the tank. */
+export type Effort = number;
 export type SessionSet = [...PrescribedSet, SetActuals?];
 
 export interface WorkoutExercise {

@@ -12,6 +12,8 @@ import { getSettings } from "@/data/settings/settings";
 import { useRestTimer } from "@/hooks/useRestTimer";
 import { titleCase } from "@/lib/format";
 import { recapExercise, type ExerciseRecap } from "./training/recap";
+import { EffortRow } from "./rest/EffortRow";
+import { TipCard } from "./rest/TipCard";
 
 export function NextExercise() {
   const { session, workoutIdx, goTo } = useSessionStore();
@@ -35,6 +37,8 @@ export function NextExercise() {
   return (
     <div className="p-4 lg:p-10 flex flex-col gap-3 max-w-3xl">
       {prev && recap && <Recap exercise={prev.exercise} recap={recap} />}
+      {/* Rate the last set of the exercise just finished. */}
+      {prev && <EffortRow session={session} wi={workoutIdx - 1} si={prev.sets.length - 1} />}
 
       <div className="bg-panel rounded-3xl p-6 border border-border shadow-card">
         <div className="text-[11px] font-bold tracking-widest text-gray-dark">
@@ -64,6 +68,7 @@ export function NextExercise() {
           Skip rest →
         </button>
       </div>
+      <TipCard exercise={next.exercise} />
     </div>
   );
 }
