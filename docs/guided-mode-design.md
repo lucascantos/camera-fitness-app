@@ -32,11 +32,29 @@ Asked once, editable later in Settings.
 | **Goal** (e.g. strength, muscle, weight loss, general) | Which kind of progress is measured and shown first |
 | **Equipment** | Tailoring suggestions and the generated program |
 | **Frequency** (training days a week) | Weekly streak, sessions target, program template |
-| **Bodyweight and waist** | Always asked; key when the goal is weight loss or appearance. Also tightens level estimates (strength standards are relative to bodyweight) |
+| **Bodyweight and waist** | Always asked (waist can be skipped); key when the goal is weight loss or appearance. Bodyweight also tightens level estimates (strength standards are relative to bodyweight) |
+
+**Built (2026-10-18), first launch only** (nothing saved yet;
+`settings.onboarded`): a white screen where each line types out letter by
+letter, key words in the accent red. Welcome → "quick body test" → why we
+ask → **goal** (stronger / lose weight / healthier → `settings.goal`) →
+**days a week** (3, 4 or 5 → `settings.weeklyGoal`) → **body weight and
+waist** (big fields with ±1 arrows → the body log; waist starts hidden behind "Add it", with "Skip waist size" to hide it again). It ends with "I've got your
+*workout plan* ready," → "how about having 1 *calibration session*?"
+(**Start session** / **Skip**). Start opens the session preview on the
+Calibration session: dumbbell squat, dumbbell press, dumbbell overhead press
+and dumbbell deadlift, 3 × 10 each, no weight prescribed (picked on each
+set's setup step) — `src/data/plans/calibration.ts`. Skip goes to Home.
+Nothing is saved until that last choice. Code: `src/components/onboarding/`.
+
+Not asked, by decision (2026-10-18): **equipment** (too place-specific; a
+later "home or gym?" question is on the idea pile, to lean suggestions
+toward machines or free weights) and **sex**.
 
 **Open:** whether more than one goal can be picked; whether "equipment" is
 one choice or a checklist (barbell + rack vs dumbbells only changes the
-program).
+program). **Units:** onboarding forces metric (kg, cm) for now; add an
+imperial option later (`TODO(units)` in `NumberStepper.tsx`).
 
 ## 3. Warmup (the camera check)
 
@@ -68,11 +86,14 @@ when this phase gets built.
 
 - For an exercise the user has never done, the app **does not prescribe a
   weight**.
-- After the first round they enter the weight used and rate how it felt on a
-  **5-level scale**; the app then suggests a weight.
-- Draft scale (reps left in the tank → suggestion):
-  1 Very easy (5+) → +2–3 steps · 2 Easy (3–4) → +1–2 · 3 Solid (2) → keep ·
-  4 Hard (1) → keep or −1 · 5 Max (0) → −1–2.
+- After the first round they enter the weight used and rate how it felt;
+  the app then suggests a weight.
+- **The rating (built 2026-10-18):** a 0–10 effort score with one decimal,
+  set on a five-segment gauge on the rest screens ("Very easy" → "Very
+  hard"; tap or drag anywhere, light blue → red). Saved per set as
+  `effort`. It reads like RPE: 10 = nothing left, ~8 = 2 reps left.
+- Draft suggestion rule (effort → next weight): under ~5 → +2–3 steps ·
+  5–7 → +1 step · 7–8.5 → keep · 8.5–9.5 → keep or −1 · 10 → −1–2.
 - The rating is self-reported reps in reserve, which is also the data needed
   to validate estimating it from rep speed later (see backlog).
 
