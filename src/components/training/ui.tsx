@@ -62,7 +62,8 @@ export function Pill({ children, tone }: {
 }
 
 export function Stepper({ label, value, suffix, onMinus, onPlus }: {
-  label: string; value: string; suffix: string; onMinus(): void; onPlus(): void;
+  /** Text, or an editable field (e.g. a NumberField) to type the value. */
+  label: string; value: React.ReactNode; suffix: string; onMinus(): void; onPlus(): void;
 }) {
   return (
     <div className="mt-3 bg-panel-dark rounded-2xl p-3 flex items-center">

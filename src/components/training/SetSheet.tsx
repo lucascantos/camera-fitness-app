@@ -5,6 +5,7 @@
 
 import { useState } from "react";
 import { Backdrop, Stepper } from "./ui";
+import { NumberField } from "./NumberField";
 
 export function SetSheet({
   reps, target, amrap, showSwitchArm, onSwitchArm, onComplete, onSkip, onClose,
@@ -35,7 +36,14 @@ export function SetSheet({
         <div className="mt-4">
           <Stepper
             label="HOW MANY REPS DID YOU DO?"
-            value={String(actual)}
+            value={
+              <NumberField
+                value={actual}
+                onCommit={setActual}
+                label="Reps done"
+                className="w-full text-left text-xl font-extrabold text-ink"
+              />
+            }
             suffix=""
             onMinus={() => setActual((v) => Math.max(0, v - 1))}
             onPlus={() => setActual((v) => v + 1)}

@@ -8,6 +8,7 @@
 import { useEffect, useState } from "react";
 import { countdownBeep } from "@/audio/sfx";
 import { getSettings } from "@/data/settings/settings";
+import { NumberField } from "./NumberField";
 
 /**
  * setup     — placing the phone; nothing is tracked
@@ -65,9 +66,10 @@ function Setup({ weight, onWeight, onReady }: {
 }
 
 /**
- * The last chance to match the set to what's actually in hand. Changes carry
- * forward to later sets of this exercise that shared the old load (see
- * mutateWeight), same as the control in the ☰ menu.
+ * The last chance to match the set to what's actually in hand: step with
+ * −/+, or tap the number and type it. Changes carry forward to later sets of
+ * this exercise that shared the old load (see mutateWeight), same as the
+ * control in the ☰ menu.
  */
 function WeightRow({ weight, onWeight }: {
   weight: number; onWeight(fn: (v: number) => number): void;
@@ -91,9 +93,19 @@ function WeightRow({ weight, onWeight }: {
             pop — the same punch the rep counter gives a counted rep. */}
         <div
           key={weight}
-          className="text-white text-3xl font-black leading-tight tabular-nums animate-pop will-change-transform"
+          className="flex items-baseline justify-center text-white animate-pop will-change-transform"
         >
-          {weight > 0 ? <>{weight}<span className="text-lg font-bold"> kg</span></> : "Bodyweight"}
+          <NumberField
+            value={weight}
+            onCommit={(v) => onWeight(() => v)}
+            max={500}
+            decimals
+            placeholder="Bodyweight"
+            label="Weight in kg"
+            fit
+            className="max-w-full text-3xl font-black leading-tight placeholder:text-white"
+          />
+          {weight > 0 && <span className="text-lg font-bold shrink-0 ml-1">kg</span>}
         </div>
       </div>
       <button
