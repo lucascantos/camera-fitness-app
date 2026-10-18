@@ -14,12 +14,22 @@ export type SceneName =
   | "transition"
   | "complete";
 
+/** A session handed to the preview screen instead of the plan's next day. */
+export interface PreviewRequest {
+  title: string;      // big heading, e.g. "Calibration"
+  subtitle: string;   // shown before the counts, e.g. "Dumbbells"
+  session: Session;
+}
+
 interface SessionState {
   scene: SceneName;
+  preview: PreviewRequest | null;
   session: Session | null;
   workoutIdx: number;
   setIdx: number;
   goTo(scene: SceneName): void;
+  /** Open the preview screen on a specific session (null = the plan's next day). */
+  openPreview(preview: PreviewRequest | null): void;
   startSession(session: Session): void;
   setCursor(workoutIdx: number, setIdx: number): void;
   endSession(): void;
@@ -35,12 +45,14 @@ interface PersistedSession {
 
 export const useSessionStore = create<SessionState>((set) => ({
   scene: "home",
+  preview: null,
   session: null,
   workoutIdx: 0,
   setIdx: 0,
   goTo: (scene) => set({ scene }),
+  openPreview: (preview) => set({ preview, scene: "preview" }),
   startSession: (session) =>
-    set({ session, workoutIdx: 0, setIdx: 0, scene: "training" }),
+    set({ session, workoutIdx: 0, setIdx: 0, scene: "training", preview: null }),
   setCursor: (workoutIdx, setIdx) => set({ workoutIdx, setIdx }),
   endSession: () => set({ session: null, scene: "home" }),
 }));

@@ -2,6 +2,8 @@
 // starts. Home's Start button opens this; the workout only begins from the
 // Start button here. The session is prepared once on entry with the plan's
 // progression, so the weights shown are exactly the ones the workout will use.
+// It can also be handed a ready-made session (store.preview), e.g. the
+// Calibration session offered at the end of onboarding.
 
 import { useEffect, useMemo } from "react";
 import { getAthlete } from "@/data/athlete/athlete";
@@ -14,21 +16,24 @@ import { dayLabel, resolveActivePlan, resolveDayIndex } from "./home/activePlan"
 import { describeLast, describeSets, sessionMuscles } from "./preview/describe";
 
 export function SessionPreview() {
-  const { goTo, startSession } = useSessionStore();
+  const { goTo, startSession, preview } = useSessionStore();
 
-  const { plan, day, session } = useMemo(() => {
+  const { title, subtitle, session } = useMemo(() => {
+    if (preview) return preview;
     const plan = resolveActivePlan();
     const dayIdx = resolveDayIndex(plan);
     const day = plan.workouts[dayIdx];
     const session = day
       ? getStrategy(plan.progression).prepareSession(plan, dayIdx, getAthlete())
       : null;
-    return { plan, day, session };
-  }, []);
+    return { title: day ? dayLabel(day.name) : "", subtitle: plan.name, session };
+  }, [preview]);
+
+  const back = () => useSessionStore.setState({ preview: null, scene: "home" });
 
   // Nothing to preview (no plan, or an empty day): back to Home.
   useEffect(() => { if (!session) goTo("home"); }, [session, goTo]);
-  if (!day || !session) return null;
+  if (!session) return null;
 
   const nSets = session.workouts.reduce((s, w) => s + w.sets.length, 0);
   const estMin = Math.max(1, Math.round(nSets * 1.5)); // ~90s per set
@@ -38,7 +43,7 @@ export function SessionPreview() {
     <div className="h-full flex flex-col bg-bg animate-page-in">
       <header className="flex items-center gap-3 px-4 py-3 shrink-0">
         <button
-          onClick={() => goTo("home")}
+          onClick={back}
           className="w-11 h-11 rounded-full bg-panel border border-border grid place-items-center text-ink shrink-0"
           aria-label="Back to home"
         >
@@ -50,9 +55,9 @@ export function SessionPreview() {
       <div className="flex-1 overflow-y-auto px-4 pb-4">
         <div className="max-w-lg mx-auto w-full flex flex-col gap-5">
           <div>
-            <h1 className="text-4xl font-extrabold text-ink leading-none">{dayLabel(day.name)}</h1>
+            <h1 className="text-4xl font-extrabold text-ink leading-none">{title}</h1>
             <div className="text-gray-dark font-semibold mt-2">
-              {plan.name} · {session.workouts.length} exercises · {nSets} sets · ~{estMin} min
+              {subtitle} · {session.workouts.length} exercises · {nSets} sets · ~{estMin} min
             </div>
             {muscles.length > 0 && (
               <div className="flex flex-wrap gap-2 mt-3">

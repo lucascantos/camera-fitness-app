@@ -12,14 +12,19 @@ const MIN_SHOW_MS = 500;
 const EXIT_MS = 900;   // longest transition: 550 ms delay + 300 ms fade, plus slack
 
 let dismissed = false;
+let markGone: () => void = () => {};
+
+/** Resolves once the splash is off screen, e.g. to start onboarding's typing. */
+export const splashGone = new Promise<void>((resolve) => { markGone = resolve; });
 
 export function dismissSplash(): void {
   const el = document.getElementById("splash");
-  if (!el || dismissed) return;
+  if (!el) { markGone(); return; }
+  if (dismissed) return;
   dismissed = true;
   const wait = Math.max(0, MIN_SHOW_MS - performance.now());
   setTimeout(() => {
     el.classList.add("sp-exit");
-    setTimeout(() => el.remove(), EXIT_MS);
+    setTimeout(() => { el.remove(); markGone(); }, EXIT_MS);
   }, wait);
 }

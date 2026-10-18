@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { loadSettings } from "@/data/settings/settings";
+import { getSettings, loadSettings, updateSettings } from "@/data/settings/settings";
 import { requestPersistentStorage } from "@/data/db";
-import { loadAthlete } from "@/data/athlete/athlete";
+import { getAthlete, loadAthlete } from "@/data/athlete/athlete";
 import { useSessionStore, loadPersistedSession } from "@/stores/sessionStore";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import { unlockAudio } from "@/audio/sfx";
@@ -21,11 +21,14 @@ import { Stats }             from "@/components/Stats";
 import { Settings }          from "@/components/Settings";
 import { SessionPreview }    from "@/components/SessionPreview";
 import { SessionRecovery }   from "@/components/SessionRecovery";
+import { Onboarding }        from "@/components/onboarding/Onboarding";
+import { makeCalibrationSession } from "@/data/plans/calibration";
 
 export default function App() {
-  const { scene } = useSessionStore();
+  const { scene, openPreview } = useSessionStore();
   const [ready, setReady] = useState(false);
   const [showRecovery, setShowRecovery] = useState(false);
+  const [onboarding, setOnboarding] = useState(false);
 
   // The full-screen workout flow.
   const workoutFlow =
@@ -43,6 +46,12 @@ export default function App() {
 
   useEffect(() => {
     Promise.all([loadSettings(), loadAthlete()]).then(async () => {
+      // Onboarding is for a first launch only. Workout history without saved
+      // settings is still an existing user, so mark them done and move on.
+      if (!getSettings().onboarded) {
+        if (getAthlete().history.length > 0) await updateSettings({ onboarded: true });
+        else setOnboarding(true);
+      }
       const persisted = await loadPersistedSession();
       if (persisted) setShowRecovery(true);
       setReady(true);
@@ -77,6 +86,20 @@ export default function App() {
   if (!ready) {
     return (
       <div className="h-full grid place-items-center text-gray-dark">Loading…</div>
+    );
+  }
+
+  // First launch: onboarding replaces the app until it's finished.
+  if (onboarding) {
+    return (
+      <Onboarding
+        onDone={(calibrate) => {
+          setOnboarding(false);
+          if (calibrate) {
+            openPreview({ title: "Calibration", subtitle: "Dumbbells", session: makeCalibrationSession() });
+          }
+        }}
+      />
     );
   }
 

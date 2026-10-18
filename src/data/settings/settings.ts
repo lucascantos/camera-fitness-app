@@ -5,6 +5,7 @@ import { kvGet, kvSet } from "@/data/db";
 import { POSE_STYLES, type PoseStyle } from "@/tracking/poseRenderer";
 
 export type Theme = "fitpop" | "dark";
+export type Goal = "strength" | "weight_loss" | "health";
 
 export interface Settings {
   masterVol: number;
@@ -21,6 +22,10 @@ export interface Settings {
   weightStep: number;
   // Training days a week the athlete aims for; drives the Home streak.
   weeklyGoal: number;
+  // What the athlete wants out of training, from onboarding; null until asked.
+  goal: Goal | null;
+  // False only on a first launch (nothing saved yet) until onboarding is done.
+  onboarded: boolean;
   favoriteExercises: string[];
   // Pose overlay display style (skeleton / smooth / spring / aura / polygons).
   poseStyle: PoseStyle;
@@ -41,6 +46,8 @@ const DEFAULTS: Settings = {
   restAlerts: false,
   weightStep: 1.0,
   weeklyGoal: 3,
+  goal: null,
+  onboarded: false,
   favoriteExercises: [],
   poseStyle: "spring",
   name: "",
@@ -58,7 +65,9 @@ export function applyTheme(theme: Theme = _settings.theme): void {
 
 export async function loadSettings(): Promise<Settings> {
   const stored = await kvGet<Partial<Settings>>("settings");
-  if (stored) _settings = { ...DEFAULTS, ...stored };
+  // Saved settings from before onboarding existed mean an existing user:
+  // only a first launch, with nothing saved, starts onboarded = false.
+  if (stored) _settings = { ...DEFAULTS, onboarded: true, ...stored };
   // Drop keys from removed features: the coach (voice volume, trainer
   // toggle) and auto-ending a set at its target (sets now always ask).
   const legacy = _settings as Settings & {
