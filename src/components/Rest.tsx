@@ -5,32 +5,16 @@ import { getSettings } from "@/data/settings/settings";
 import { useRestTimer } from "@/hooks/useRestTimer";
 import { EffortRow } from "./rest/EffortRow";
 import { TipCard } from "./rest/TipCard";
+import { RestTimer } from "./rest/RestTimer";
 
 export function Rest() {
   const duration = getSettings().restSeconds;
   const { goTo, session, workoutIdx, setIdx } = useSessionStore();
   const remaining = useRestTimer(duration, () => goTo("training"));
 
-  const pct = Math.max(0, (remaining / duration) * 100);
-
   return (
     <div className="p-4 lg:p-10 lg:h-full flex flex-col gap-3 max-w-3xl">
-      <div className="bg-panel rounded-3xl p-6 lg:p-10 border border-border shadow-card">
-        <div className="text-accent text-3xl font-extrabold">REST</div>
-        <div className="text-[5rem] lg:text-[8rem] font-black leading-none mt-4 text-ink">
-          {remaining}
-        </div>
-        <div className="text-gray-dark text-lg">seconds remaining</div>
-        <div className="mt-6 h-3 bg-panel-dark rounded-full overflow-hidden">
-          <div className="h-full bg-accent transition-all" style={{ width: `${pct}%` }} />
-        </div>
-        <button
-          onClick={() => goTo("training")}
-          className="mt-8 bg-accent text-on_accent font-bold py-3 px-8 rounded-2xl hover:bg-accent-hov transition"
-        >
-          Skip Rest  →
-        </button>
-      </div>
+      <RestTimer remaining={remaining} duration={duration} onSkip={() => goTo("training")} />
       {/* The cursor already points at the coming set: rate the one just done. */}
       {session && <EffortRow session={session} wi={workoutIdx} si={setIdx - 1} />}
       <NextSet />

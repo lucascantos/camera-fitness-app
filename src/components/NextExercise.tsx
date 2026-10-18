@@ -1,9 +1,13 @@
 // Shown between exercises in a workout: the cursor has already advanced to the
 // next exercise (set 0). The rest happens here, so the screen is built around
-// what the athlete needs while getting ready: what's up next, how long they
-// have, and a way to skip. A single recap line of the exercise just finished
-// sits on top — enough of a "done!" moment without pulling focus from the
-// next one. The full breakdown belongs to the Complete screen.
+// what the athlete needs while getting ready, in this order: a recap line of
+// the exercise just finished (a small "done!" moment), what's up next, the
+// rest timer, then how hard the last set was, and a tip. The full breakdown
+// belongs to the Complete screen.
+//
+// Unlike rest between sets, this one doesn't start the next exercise by
+// itself: switching exercises usually means moving the phone or the weights,
+// so when the timer runs out it waits for "Start".
 
 import { useMemo } from "react";
 import { useSessionStore } from "@/stores/sessionStore";
@@ -14,11 +18,13 @@ import { titleCase } from "@/lib/format";
 import { recapExercise, type ExerciseRecap } from "./training/recap";
 import { EffortRow } from "./rest/EffortRow";
 import { TipCard } from "./rest/TipCard";
+import { RestTimer } from "./rest/RestTimer";
 
 export function NextExercise() {
   const { session, workoutIdx, goTo } = useSessionStore();
   const duration = getSettings().restSeconds;
-  const remaining = useRestTimer(duration, () => goTo("training"));
+  // No auto-start: the timer stops at 0 and RestTimer's button becomes "Start".
+  const remaining = useRestTimer(duration, () => {});
 
   const prev = session?.workouts[workoutIdx - 1];
   // Computed once on entry: history doesn't change while resting.
@@ -32,13 +38,9 @@ export function NextExercise() {
   const next = session.workouts[workoutIdx];
   if (!next) return null;
 
-  const pct = Math.max(0, (remaining / duration) * 100);
-
   return (
     <div className="p-4 lg:p-10 flex flex-col gap-3 max-w-3xl">
       {prev && recap && <Recap exercise={prev.exercise} recap={recap} />}
-      {/* Rate the last set of the exercise just finished. */}
-      {prev && <EffortRow session={session} wi={workoutIdx - 1} si={prev.sets.length - 1} />}
 
       <div className="bg-panel rounded-3xl p-6 border border-border shadow-card">
         <div className="text-[11px] font-bold tracking-widest text-gray-dark">
@@ -50,24 +52,9 @@ export function NextExercise() {
         <div className="text-gray-dark text-lg mt-2">{setsSummary(next.sets)}</div>
       </div>
 
-      <div className="bg-panel rounded-3xl p-6 border border-border shadow-card">
-        <div className="text-accent text-xl font-extrabold tracking-wide">REST</div>
-        <div className="flex items-baseline gap-2 mt-1">
-          <div className="text-[5rem] font-black leading-none text-ink tabular-nums">
-            {remaining}
-          </div>
-          <div className="text-gray-dark text-lg">sec</div>
-        </div>
-        <div className="mt-4 h-3 bg-panel-dark rounded-full overflow-hidden">
-          <div className="h-full bg-accent transition-all" style={{ width: `${pct}%` }} />
-        </div>
-        <button
-          onClick={() => goTo("training")}
-          className="mt-6 w-full bg-accent text-on_accent font-bold py-4 rounded-2xl hover:bg-accent-hov transition"
-        >
-          Skip rest →
-        </button>
-      </div>
+      <RestTimer remaining={remaining} duration={duration} onSkip={() => goTo("training")} />
+      {/* Rate the last set of the exercise just finished. */}
+      {prev && <EffortRow session={session} wi={workoutIdx - 1} si={prev.sets.length - 1} />}
       <TipCard exercise={next.exercise} />
     </div>
   );
