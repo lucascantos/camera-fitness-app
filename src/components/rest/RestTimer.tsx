@@ -21,12 +21,19 @@ export function RestTimer({ remaining, duration, onSkip }: {
           <div className="text-gray-dark text-lg">{over ? "Rest over" : "sec"}</div>
         </div>
         {over ? (
-          <button
-            onClick={onSkip}
-            className="shrink-0 font-bold px-5 min-h-[48px] rounded-2xl bg-accent text-on_accent active:bg-accent-hov animate-pop transition"
-          >
-            Start →
-          </button>
+          // Pulsing so the next step is unmissable once rest is over.
+          <span className="relative shrink-0">
+            <span
+              aria-hidden="true"
+              className="absolute inset-0 rounded-2xl bg-accent animate-cta-ring motion-reduce:hidden"
+            />
+            <button
+              onClick={onSkip}
+              className="relative font-bold px-5 min-h-[48px] rounded-2xl bg-accent text-on_accent active:bg-accent-hov animate-cta-breathe motion-reduce:animate-none"
+            >
+              Start →
+            </button>
+          </span>
         ) : (
           <HoldButton
             onHold={onSkip}

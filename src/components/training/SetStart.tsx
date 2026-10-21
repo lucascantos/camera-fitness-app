@@ -1,4 +1,5 @@
 // The start of every set: time to place the phone, then a 3-2-1 countdown.
+// The set starts from a big see-through "Start" in the middle of the screen.
 //
 // The camera feed and skeleton stay visible behind this overlay — the whole
 // point of the setup phase is to see yourself while you move the phone — but
@@ -44,23 +45,38 @@ function Setup({ weight, onWeight, onReady }: {
 }) {
   return (
     <>
-      <div className="absolute inset-x-0 top-1/3 px-6 flex justify-center pointer-events-none animate-fade-in">
+      <div className="absolute inset-x-0 top-[18%] px-6 flex justify-center pointer-events-none animate-fade-in">
         <div className="bg-black/55 backdrop-blur rounded-2xl px-5 py-3 text-white text-xl font-bold text-center">
           Please adjust the camera.
         </div>
       </div>
-      <div
-        className="absolute inset-x-0 bottom-0 px-4 animate-fade-in"
-        style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.75rem)" }}
-      >
-        {weight !== null && <WeightRow weight={weight} onWeight={onWeight} />}
+
+      {/* Tap the centre to start. Only the fill breathes (see-through ↔
+          solid) so the camera shows through it; the label stays solid. */}
+      <div className="absolute inset-0 grid place-items-center pointer-events-none animate-fade-in">
         <button
           onClick={onReady}
-          className="w-full bg-accent text-on_accent font-extrabold text-2xl rounded-full py-4 shadow-lg active:scale-[0.98] transition-transform"
+          aria-label="Start the set"
+          className="relative w-40 h-40 rounded-full grid place-items-center pointer-events-auto active:scale-95 transition-transform"
         >
-          Ready!
+          <span
+            aria-hidden="true"
+            className="absolute inset-0 rounded-full bg-accent opacity-60 animate-start-breathe motion-reduce:animate-none"
+          />
+          <span className="relative text-white text-3xl font-black tracking-wide drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)]">
+            Start
+          </span>
         </button>
       </div>
+
+      {weight !== null && (
+        <div
+          className="absolute inset-x-0 bottom-0 px-4 animate-fade-in"
+          style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.75rem)" }}
+        >
+          <WeightRow weight={weight} onWeight={onWeight} />
+        </div>
+      )}
     </>
   );
 }
@@ -79,7 +95,7 @@ function WeightRow({ weight, onWeight }: {
     "w-14 h-14 rounded-full bg-white/15 text-white text-3xl font-bold grid place-items-center " +
     "active:bg-white/30 active:scale-90 transition shrink-0";
   return (
-    <div className="mb-3 bg-black/55 backdrop-blur rounded-3xl p-2 flex items-center gap-2">
+    <div className="bg-black/55 backdrop-blur rounded-3xl p-2 flex items-center gap-2">
       <button
         onClick={() => onWeight((v) => Math.max(0, v - step))}
         aria-label="Decrease weight"

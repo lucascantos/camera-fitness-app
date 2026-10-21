@@ -86,6 +86,22 @@ export default {
           from: { opacity: "0", transform: "translateY(16px)" },
           to:   { opacity: "1", transform: "translateY(0)" },
         },
+        // "Start" once rest is over: the button breathes, and a ring of the
+        // same colour swells out from behind it and fades, on the same beat.
+        "cta-breathe": {
+          "0%, 100%": { transform: "scale(1)" },
+          "50%":      { transform: "scale(1.06)" },
+        },
+        "cta-ring": {
+          "0%":   { opacity: "0.5", transform: "scale(1)" },
+          "100%": { opacity: "0",   transform: "scale(1.35, 1.6)" },
+        },
+        // The centre "Start" on the camera-adjust step: its fill breathes
+        // from fully see-through up to 80% and back, so the camera shows.
+        "start-breathe": {
+          "0%, 100%": { opacity: "0" },
+          "50%":      { opacity: "0.8" },
+        },
         // Set finished / arm switched: one pulse of the whole rep bar.
         "pulse-once": {
           "0%":   { transform: "scale(1)" },
@@ -104,6 +120,9 @@ export default {
         "dialog-out": "dialog-out 160ms ease-in both",
         pop:          "pop 220ms cubic-bezier(0.34,1.56,0.64,1) both",
         "pulse-once": "pulse-once 320ms ease-out both",
+        "cta-breathe": "cta-breathe 1200ms ease-in-out infinite",
+        "cta-ring":    "cta-ring 1200ms ease-out infinite",
+        "start-breathe": "start-breathe 1600ms ease-in-out infinite",
         "count-in":   "count-in 1000ms cubic-bezier(0.22,1,0.36,1) both",
         "zoom-in":    "zoom-in 500ms cubic-bezier(0.22,1,0.36,1) both",
         // Final Done modal washing out into the summary screen's background.
