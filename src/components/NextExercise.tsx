@@ -11,7 +11,6 @@
 
 import { useMemo } from "react";
 import { useSessionStore } from "@/stores/sessionStore";
-import type { SessionSet } from "@/data/plans/plans";
 import { getSettings } from "@/data/settings/settings";
 import { useRestTimer } from "@/hooks/useRestTimer";
 import { titleCase } from "@/lib/format";
@@ -19,6 +18,7 @@ import { recapExercise, type ExerciseRecap } from "./training/recap";
 import { EffortRow } from "./rest/EffortRow";
 import { TipCard } from "./rest/TipCard";
 import { RestTimer } from "./rest/RestTimer";
+import { UpNextPicker } from "./next/UpNextPicker";
 
 export function NextExercise() {
   const { session, workoutIdx, goTo } = useSessionStore();
@@ -42,20 +42,13 @@ export function NextExercise() {
     <div className="p-4 lg:p-10 flex flex-col gap-3 max-w-3xl">
       {prev && recap && <Recap exercise={prev.exercise} recap={recap} />}
 
-      <div className="bg-panel rounded-3xl p-6 border border-border shadow-card">
-        <div className="text-[11px] font-bold tracking-widest text-gray-dark">
-          UP NEXT · EXERCISE {workoutIdx + 1} OF {session.workouts.length}
-        </div>
-        <div className="text-4xl font-black leading-none mt-2 text-ink">
-          {titleCase(next.exercise)}
-        </div>
-        <div className="text-gray-dark text-lg mt-2">{setsSummary(next.sets)}</div>
-      </div>
+      {/* Swipe to pick another remaining exercise, or find an alternative. */}
+      <UpNextPicker session={session} workoutIdx={workoutIdx} />
 
       <RestTimer remaining={remaining} duration={duration} onSkip={() => goTo("training")} />
       {/* Rate the last set of the exercise just finished. */}
       {prev && <EffortRow session={session} wi={workoutIdx - 1} si={prev.sets.length - 1} />}
-      <TipCard exercise={next.exercise} />
+      <TipCard key={next.exercise} exercise={next.exercise} />
     </div>
   );
 }
@@ -85,11 +78,3 @@ function Recap({ exercise, recap }: { exercise: string; recap: ExerciseRecap }) 
   );
 }
 
-function setsSummary(sets: SessionSet[]): string {
-  const n = sets.length;
-  const first = sets[0];
-  if (!first) return `${n} sets`;
-  const [reps, weight] = first;
-  const load = weight > 0 ? `${weight} kg` : "bodyweight";
-  return `${n} × ${reps} reps · ${load}`;
-}
