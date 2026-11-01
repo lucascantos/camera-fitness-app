@@ -59,3 +59,17 @@ export function planState<T extends object>(
   if (!all[plan.id]) all[plan.id] = { ...defaults };
   return all[plan.id];
 }
+
+/**
+ * The weight of the last set the athlete actually did of `exercise` (0 if
+ * never done, or done at bodyweight). Fills a plan exercise that has no
+ * weight yet, so a lift done before never comes back as "bodyweight".
+ */
+export function lastLoggedWeight(athlete: Athlete, exercise: string): number {
+  for (let i = athlete.history.length - 1; i >= 0; i--) {
+    const ex = athlete.history[i].exercises.find((e) => e.exercise === exercise);
+    const done = ex?.sets.filter((s) => s.reps > 0);
+    if (done?.length) return done[done.length - 1].weight;
+  }
+  return 0;
+}

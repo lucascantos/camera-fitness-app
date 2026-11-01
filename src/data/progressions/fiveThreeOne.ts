@@ -23,6 +23,7 @@ import {
 } from "@/data/plans/plans";
 import {
   exerciseHit,
+  lastLoggedWeight,
   planState,
   type ProgressionStrategy,
 } from "./base";
@@ -83,9 +84,11 @@ export const fiveThreeOne: ProgressionStrategy = {
     const week = WEEKS[state.week_index % WEEKS.length];
 
     const exercisesSets: [string, PrescribedSet[]][] = day.exercises.map((e) => {
-      // Accessory exercises pass through unchanged.
+      // Accessory exercises pass through unchanged, except that one with no
+      // weight yet picks up the last weight actually lifted for it.
       if (!MAIN_LIFTS.has(e.exercise)) {
-        return [e.exercise, e.sets.map((s) => [...s] as PrescribedSet)];
+        const last = lastLoggedWeight(athlete, e.exercise);
+        return [e.exercise, e.sets.map(([reps, w, amrap]) => [reps, w || last, amrap] as PrescribedSet)];
       }
       const tm = state.training_max[e.exercise]
         ?? DEFAULT_TM[e.exercise]

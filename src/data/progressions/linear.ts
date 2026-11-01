@@ -22,6 +22,7 @@ import {
 } from "@/data/plans/plans";
 import {
   exerciseHit,
+  lastLoggedWeight,
   planState,
   type ProgressionStrategy,
 } from "./base";
@@ -52,7 +53,11 @@ export const linear: ProgressionStrategy = {
         const seedWeight = e.sets[0]?.[1] ?? 0;
         state.exercises[e.exercise] = { working_weight: seedWeight, fail_streak: 0 };
       }
-      const w = state.exercises[e.exercise].working_weight;
+      // No weight yet (a plan that prescribes none): use the last weight the
+      // athlete actually lifted for it, from any day or session.
+      const ex = state.exercises[e.exercise];
+      if (ex.working_weight === 0) ex.working_weight = lastLoggedWeight(athlete, e.exercise);
+      const w = ex.working_weight;
       // Same rep / amrap targets as the template, but weight comes from state.
       const sets = e.sets.map(([reps, _w, amrap]) =>
         [reps, w, amrap] as PrescribedSet,
@@ -73,6 +78,12 @@ export const linear: ProgressionStrategy = {
       // Bodyweight exercises (weight === 0) skip progression — no point.
       const exState = state.exercises[w.exercise]
         ?? { working_weight: 0, fail_streak: 0 };
+      // No weight prescribed yet (a generated plan's new exercise): start from
+      // the heaviest weight actually lifted, then progress as usual.
+      if (exState.working_weight === 0) {
+        exState.working_weight = Math.max(0, ...w.sets.map(
+          (s) => (s[3] as { weight: number } | undefined)?.weight ?? 0));
+      }
       if (exState.working_weight === 0) continue;
 
       if (exerciseHit(w)) {
