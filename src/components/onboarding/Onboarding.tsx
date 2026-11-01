@@ -9,6 +9,9 @@ import { useEffect, useRef, useState } from "react";
 import { updateSettings, type Goal } from "@/data/settings/settings";
 import { recordMeasurement } from "@/data/body/body";
 import { splashGone } from "@/splash";
+import { installGeneratedPlan } from "@/data/plans/generate";
+import { requestNotificationPermission } from "@/notifications/notify";
+import { syncTrainingReminder } from "@/notifications/trainingReminder";
 import { Typed, useTyped } from "./Typewriter";
 import { NumberStepper } from "./NumberStepper";
 
@@ -16,6 +19,7 @@ type Step =
   | { kind: "message"; line: string }
   | { kind: "goal"; line: string }
   | { kind: "days"; line: string }
+  | { kind: "remind"; line: string }
   | { kind: "body"; line: string }
   | { kind: "calibrate"; line: string };
 
@@ -25,6 +29,7 @@ const STEPS: Step[] = [
   { kind: "message", line: "I need to know some things to prepare the best plan for you." },
   { kind: "goal",    line: "To start off, could you tell me what is your *goal*?" },
   { kind: "days",    line: "How many *days a week* would you like to train?" },
+  { kind: "remind",  line: "Want me to *remind you* when it's time to train?" },
   { kind: "body",    line: "Last thing: your *body weight* and *waist size*." },
   { kind: "message", line: "I've got your *workout plan* ready," },
   { kind: "calibrate", line: "But before we jump into that, how about having 1 *calibration session*?" },
@@ -42,6 +47,7 @@ export function Onboarding({ onDone }: { onDone(calibrate: boolean): void }) {
   const [idx, setIdx] = useState(0);
   const [goal, setGoal] = useState<Goal>("strength");
   const [days, setDays] = useState(3);
+  const [remind, setRemind] = useState(false);
   const [weight, setWeight] = useState(70);
   const [waist, setWaist] = useState(80);
   // Waist is optional and starts hidden: plenty of people don't know theirs
@@ -55,7 +61,9 @@ export function Onboarding({ onDone }: { onDone(calibrate: boolean): void }) {
   const finish = async (calibrate: boolean) => {
     await recordMeasurement("weight_kg", weight);
     if (!skipWaist) await recordMeasurement("waist_cm", waist);
-    await updateSettings({ goal, weeklyGoal: days, onboarded: true });
+    await updateSettings({ goal, weeklyGoal: days, onboarded: true, trainingReminders: remind });
+    void syncTrainingReminder();
+    await installGeneratedPlan(goal, days);   // "I've got your workout plan ready"
     onDone(calibrate);
   };
 
@@ -78,6 +86,14 @@ export function Onboarding({ onDone }: { onDone(calibrate: boolean): void }) {
               {DAYS.map((d) => (
                 <BigChoice key={d} onClick={() => { setDays(d); next(); }}>{d}</BigChoice>
               ))}
+            </div>
+          ) : step.kind === "remind" ? (
+            <div className="flex flex-col gap-3">
+              {/* The tap is the user gesture the permission prompt needs. */}
+              <BigChoice onClick={async () => { setRemind((await requestNotificationPermission()) === "granted"); next(); }}>
+                Yes, remind me
+              </BigChoice>
+              <BigChoice onClick={next}>Not now</BigChoice>
             </div>
           ) : step.kind === "body" ? (
             <div className="flex flex-col gap-5">

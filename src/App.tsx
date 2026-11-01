@@ -23,6 +23,8 @@ import { SessionPreview }    from "@/components/SessionPreview";
 import { SessionRecovery }   from "@/components/SessionRecovery";
 import { Onboarding }        from "@/components/onboarding/Onboarding";
 import { makeCalibrationSession } from "@/data/plans/calibration";
+import { installGeneratedPlan } from "@/data/plans/generate";
+import { syncTrainingReminder } from "@/notifications/trainingReminder";
 
 export default function App() {
   const { scene, openPreview } = useSessionStore();
@@ -52,6 +54,12 @@ export default function App() {
         if (getAthlete().history.length > 0) await updateSettings({ onboarded: true });
         else setOnboarding(true);
       }
+      // Onboarded before plans were generated (goal known, no plan yet):
+      // make the plan onboarding promised, once.
+      const s = getSettings();
+      if (s.onboarded && s.goal && !s.guidedPlanId) await installGeneratedPlan(s.goal, s.weeklyGoal);
+      // Keep the background training-reminder wake-up in step with the setting.
+      void syncTrainingReminder();
       const persisted = await loadPersistedSession();
       if (persisted) setShowRecovery(true);
       setReady(true);

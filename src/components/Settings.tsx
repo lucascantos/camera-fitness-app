@@ -12,6 +12,7 @@ import { Group, Pill, Slider, ToggleRow } from "./settings/controls";
 import { InstallSection } from "./settings/InstallSection";
 import { DataSection } from "./settings/DataSection";
 import { RestAlertSection } from "./settings/RestAlertSection";
+import { TrainingReminderSection } from "./settings/TrainingReminderSection";
 
 const THEMES: { id: Theme; label: string }[] = [
   { id: "fitpop", label: "Light" },
@@ -130,6 +131,7 @@ export function Settings() {
         ))}
       </Group>
       <RestAlertSection />
+      <TrainingReminderSection />
 
       <InstallSection />
       <DataSection />

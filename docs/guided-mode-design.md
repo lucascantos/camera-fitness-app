@@ -47,6 +47,24 @@ and dumbbell deadlift, 3 × 10 each, no weight prescribed (picked on each
 set's setup step) — `src/data/plans/calibration.ts`. Skip goes to Home.
 Nothing is saved until that last choice. Code: `src/components/onboarding/`.
 
+**Plan generation (built 2026-10-24):** finishing onboarding creates the
+plan it promises and makes it active (`src/data/plans/generate.ts`). Days a
+week pick the split — 3: full body A/B · 4: Upper/Lower ×2 · 5: Upper,
+Lower, Push, Pull, Legs — and the goal the style: strength 3×6 main / 3×10
+accessories, 2 min rest · weight loss 3×12 / 3×15, 60 s · health 3×10 /
+3×12, 90 s. Barbell lifts allowed. No weight is prescribed; Linear
+progression starts from the first weight actually lifted. Users who
+onboarded before this get the plan once on their next launch.
+
+**Training reminders (built 2026-10-24):** onboarding asks "Want me to
+remind you when it's time to train?" (also a toggle in Settings). With no
+server, they use Periodic Background Sync: Chrome on Android wakes the
+installed app about once a day at a time it chooses, and
+`public/sw-reminder.js` notifies only if reminders are on, it's 08:00–21:00,
+no workout today, the weekly goal isn't met, and either 2+ days have passed
+since the last workout (1+ at 4–5 a week) or there are no days to spare; at
+most once a day. Not available on iPhone, desktop or in a browser tab.
+
 Not asked, by decision (2026-10-18): **equipment** (too place-specific; a
 later "home or gym?" question is on the idea pile, to lean suggestions
 toward machines or free weights) and **sex**.

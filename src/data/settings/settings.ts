@@ -19,6 +19,8 @@ export interface Settings {
   restSeconds: number;
   // Notify when rest ends while the app is in the background (opt-in).
   restAlerts: boolean;
+  // Remind on training days when behind the weekly goal (opt-in; Android).
+  trainingReminders: boolean;
   weightStep: number;
   // Training days a week the athlete aims for; drives the Home streak.
   weeklyGoal: number;
@@ -26,6 +28,8 @@ export interface Settings {
   goal: Goal | null;
   // False only on a first launch (nothing saved yet) until onboarding is done.
   onboarded: boolean;
+  // The plan generated from the onboarding answers, once it has been made.
+  guidedPlanId: string | null;
   favoriteExercises: string[];
   // Pose overlay display style (skeleton / smooth / spring / aura / polygons).
   poseStyle: PoseStyle;
@@ -44,10 +48,12 @@ const DEFAULTS: Settings = {
   activePlanId: null,
   restSeconds: 60,
   restAlerts: false,
+  trainingReminders: false,
   weightStep: 1.0,
   weeklyGoal: 3,
   goal: null,
   onboarded: false,
+  guidedPlanId: null,
   favoriteExercises: [],
   poseStyle: "spring",
   name: "",

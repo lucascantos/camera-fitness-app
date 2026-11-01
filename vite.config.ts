@@ -102,8 +102,9 @@ export default defineConfig(async ({ command, mode, isPreview }) => {
         // first run" (Phase 2's actual goal) without penalizing everyone who
         // just opens the app to check their stats.
         globIgnores: ["models/**"],
-        // notificationclick handler — see public/sw-notify.js.
-        importScripts: ["sw-notify.js"],
+        // notificationclick handler — see public/sw-notify.js; training
+        // reminders (periodicsync) — see public/sw-reminder.js.
+        importScripts: ["sw-notify.js", "sw-reminder.js"],
         runtimeCaching: [
           {
             urlPattern: ({ url }) => url.pathname.includes("/models/"),
