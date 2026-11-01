@@ -8,6 +8,10 @@
 // Unlike rest between sets, this one doesn't start the next exercise by
 // itself: switching exercises usually means moving the phone or the weights,
 // so when the timer runs out it waits for "Start".
+//
+// A routine also opens here, on its first exercise: the same "Up next" card
+// (swipe to change, find alternatives) and a Start button, without the rest
+// timer or the effort question — there's nothing to rest from yet.
 
 import { useMemo } from "react";
 import { useSessionStore } from "@/stores/sessionStore";
@@ -21,6 +25,28 @@ import { RestTimer } from "./rest/RestTimer";
 import { UpNextPicker } from "./next/UpNextPicker";
 
 export function NextExercise() {
+  const { workoutIdx } = useSessionStore();
+  return workoutIdx === 0 ? <FirstExercise /> : <BetweenExercises />;
+}
+
+function FirstExercise() {
+  const { session, goTo } = useSessionStore();
+  if (!session?.workouts[0]) return null;
+  return (
+    <div className="p-4 lg:p-10 flex flex-col gap-3 max-w-3xl">
+      <UpNextPicker session={session} workoutIdx={0} />
+      <button
+        onClick={() => goTo("training")}
+        className="w-full bg-accent text-on_accent font-extrabold py-4 rounded-2xl text-lg active:bg-accent-hov transition"
+      >
+        Start →
+      </button>
+      <TipCard key={session.workouts[0].exercise} exercise={session.workouts[0].exercise} />
+    </div>
+  );
+}
+
+function BetweenExercises() {
   const { session, workoutIdx, goTo } = useSessionStore();
   const duration = getSettings().restSeconds;
   // No auto-start: the timer stops at 0 and RestTimer's button becomes "Start".

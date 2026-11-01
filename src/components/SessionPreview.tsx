@@ -101,7 +101,7 @@ export function SessionPreview() {
 
       <div className="px-4 pt-2 pb-4 shrink-0">
         <button
-          onClick={() => startSession(session)}
+          onClick={() => startSession(session, "transition")}
           className="w-full max-w-lg mx-auto bg-accent text-on_accent font-extrabold py-4 rounded-2xl text-lg flex items-center justify-center gap-3 active:bg-accent-hov transition"
         >
           <PlayIcon size={14} />

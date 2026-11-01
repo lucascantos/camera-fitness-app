@@ -30,7 +30,9 @@ interface SessionState {
   goTo(scene: SceneName): void;
   /** Open the preview screen on a specific session (null = the plan's next day). */
   openPreview(preview: PreviewRequest | null): void;
-  startSession(session: Session): void;
+  /** Start a session; `first` is the opening scene (a routine opens on its
+   *  first exercise's "Up next" screen, a single exercise goes straight in). */
+  startSession(session: Session, first?: SceneName): void;
   setCursor(workoutIdx: number, setIdx: number): void;
   endSession(): void;
 }
@@ -51,8 +53,8 @@ export const useSessionStore = create<SessionState>((set) => ({
   setIdx: 0,
   goTo: (scene) => set({ scene }),
   openPreview: (preview) => set({ preview, scene: "preview" }),
-  startSession: (session) =>
-    set({ session, workoutIdx: 0, setIdx: 0, scene: "training", preview: null }),
+  startSession: (session, first = "training") =>
+    set({ session, workoutIdx: 0, setIdx: 0, scene: first, preview: null }),
   setCursor: (workoutIdx, setIdx) => set({ workoutIdx, setIdx }),
   endSession: () => set({ session: null, scene: "home" }),
 }));

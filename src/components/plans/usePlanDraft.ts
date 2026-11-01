@@ -121,7 +121,7 @@ export function usePlanDraft() {
     startDay() {
       if (!draft?.workouts[activeDayIdx]) return;
       const strategy = getStrategy(draft.progression);
-      startSession(strategy.prepareSession(draft, activeDayIdx, getAthlete()));
+      startSession(strategy.prepareSession(draft, activeDayIdx, getAthlete()), "transition");
     },
 
     patchDraft: (p: Partial<Plan>) => setDraft((d) => (d ? { ...d, ...p } : d)),
